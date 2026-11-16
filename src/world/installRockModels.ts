@@ -36,9 +36,12 @@ export async function installRockModels(scene: Scene, nodes: readonly HarvestNod
   // The source rock is about 8 world units wide; scale to original boulder size.
   for (const original of originals) {
     if (!(original instanceof Mesh)) continue;
-    const anchor = create("glb-" + original.name, original, 0.18);
+    const anchor = create("glb-" + original.name, new TransformNode("rock-placement-" + original.name, scene), 0.18);
+    anchor.parent!.position.copyFrom(original.position);
+    anchor.parent!.rotation.copyFrom(original.rotation);
+    anchor.parent!.scaling.copyFrom(original.scaling);
     anchor.position.set(0, -0.15, 0);
-    original.isVisible = false;
+    original.dispose();
   }
   for (const node of nodes) {
     if (node.kind !== "stone") continue;
