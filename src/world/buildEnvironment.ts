@@ -101,33 +101,59 @@ export function buildEnvironment(scene: Scene): Footprint[] {
   const path = MeshBuilder.CreateRibbon("continuous-footpath", { pathArray: [left, right], sideOrientation: Mesh.DOUBLESIDE }, scene);
   path.material = soil;
 
-  // Low-poly pine with three tiered crowns; thin instances keep draw calls low.
-  const trunk = MeshBuilder.CreateCylinder("pine-trunk-source", { height: 3.5, diameterTop: 0.25, diameterBottom: 0.7, tessellation: 7 }, scene);
+  // Optimized interpretation of the custom stylized pine: a tapered trunk and
+  // five overlapping, slightly irregular needle canopies. The original GLB
+  // contains ~27k triangles; this forest LOD uses only six shared source meshes.
+  // Thin instances keep GPU draw calls approximately constant across the forest.
+  const trunk = MeshBuilder.CreateCylinder("pine-trunk-source", {
+    height: 8.2, diameterTop: 0.11, diameterBottom: 0.68, tessellation: 7,
+  }, scene);
   trunk.material = bark;
-  const crowns = [0, 1, 2].map((tier) => {
+  const crownMaterials = [pineDark, pineMid, pineLight, pineDark, pineMid];
+  const crownWidths = [5.2, 4.6, 3.8, 2.9, 1.75];
+  const crownHeights = [3.1, 2.85, 2.5, 2.05, 1.6];
+  const crownY = [3.15, 4.3, 5.45, 6.55, 7.65];
+  const crowns = crownWidths.map((width, tier) => {
     const mesh = MeshBuilder.CreateCylinder("pine-crown-source-" + tier, {
-      height: 3.4, diameterTop: 0, diameterBottom: 4.6 - tier * 0.75, tessellation: 7,
+      height: crownHeights[tier],
+      diameterTop: 0.05,
+      diameterBottom: width,
+      tessellation: 9,
+      subdivisions: 2,
     }, scene);
-    mesh.material = [pineDark, pineMid, pineLight][tier];
+    mesh.material = crownMaterials[tier];
     return mesh;
   });
-  const transforms: number[][] = [[], [], [], []];
-  const matrix = (x: number, y: number, z: number, scale: number) => [
-    scale, 0, 0, 0, 0, scale, 0, 0, 0, 0, scale, 0, x, y, z, 1,
-  ];
+  const sources = [trunk, ...crowns];
+  const transforms: number[][] = sources.map(() => []);
+  const matrix = (x: number, y: number, z: number, scale: number, angle: number) => {
+    const c = Math.cos(angle) * scale;
+    const sn = Math.sin(angle) * scale;
+    return [c, 0, -sn, 0, 0, scale, 0, 0, sn, 0, c, 0, x, y, z, 1];
+  };
   for (let i = 0; i < 175; i++) {
     const x = (random() - 0.5) * 128;
     const z = (random() - 0.5) * 128;
     if (Math.abs(x) < 11 && Math.abs(z) < 15) continue;
     if (z > 9 && z < 58 && Math.abs(x - Math.sin(z * 0.12) * 3) < 6) continue;
-    const s = 0.75 + random() * 0.7;
-    obstacles.push({ x, z, halfWidth: 0.27 * s, halfDepth: 0.27 * s });
-    transforms[0].push(...matrix(x, 1.75 * s, z, s));
-    for (let tier = 0; tier < 3; tier++) {
-      transforms[tier + 1].push(...matrix(x, (3.4 + tier * 1.05) * s, z, s));
+    const scale = 0.75 + random() * 0.7;
+    const rotation = random() * Math.PI * 2;
+    obstacles.push({ x, z, halfWidth: 0.27 * scale, halfDepth: 0.27 * scale });
+    transforms[0].push(...matrix(x, 4.1 * scale, z, scale, rotation));
+    for (let tier = 0; tier < crowns.length; tier++) {
+      const offset = 0.13 * Math.sin(rotation + tier * 2.3);
+      const offsetZ = 0.12 * Math.cos(rotation + tier * 1.7);
+      const tierScale = scale * (0.96 + 0.04 * Math.sin(rotation * 3 + tier));
+      transforms[tier + 1].push(...matrix(
+        x + offset * scale,
+        crownY[tier] * scale,
+        z + offsetZ * scale,
+        tierScale,
+        rotation + tier * 0.48,
+      ));
     }
   }
-  [trunk, ...crowns].forEach((source, index) => {
+  sources.forEach((source, index) => {
     source.thinInstanceSetBuffer("matrix", new Float32Array(transforms[index]), 16);
     source.isPickable = false;
     source.alwaysSelectAsActiveMesh = true;
