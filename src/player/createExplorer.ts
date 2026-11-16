@@ -79,6 +79,7 @@ export function createExplorer(scene: Scene, parent: TransformNode) {
   let blend = 0;
   let harvestPhase = 0;
   return {
+    setVisible(visible: boolean) { rig.setEnabled(visible); },
     update(dt: number, moving: boolean, sprinting: boolean, airborne: boolean, harvesting = false) {
       const target = moving ? 1 : 0;
       blend += (target - blend) * Math.min(1, dt * 9);
