@@ -1,3 +1,5 @@
+import "@babylonjs/core/Shaders/default.vertex";
+import "@babylonjs/core/Shaders/default.fragment";
 import { Engine } from "@babylonjs/core/Engines/engine";
 import { createWorld } from "./world/createWorld";
 import "./style.css";
