@@ -159,7 +159,8 @@ export function buildEnvironment(scene: Scene): Footprint[] {
     tuft.material = random() < 0.28 ? flowers[Math.floor(random() * flowers.length)] : grassLight;
   }
 
-  // Central abandoned cottage with an actual dark doorway and readable silhouette.\n  obstacles.push({ x: 0, z: 0, halfWidth: 3.5, halfDepth: 2.9 });
+  // Central abandoned cottage with an actual dark doorway and readable silhouette.
+  obstacles.push({ x: 0, z: 0, halfWidth: 3.5, halfDepth: 2.9 });
   box(scene, "cottage-main", 7, 3.6, 5.8, 0, 1.8, 0, timber);
   box(scene, "doorway", 1.55, 2.65, 0.08, 0, 1.325, 2.94, dark);
   box(scene, "door-frame-left", 0.22, 2.8, 0.24, -0.89, 1.4, 2.98, timberLight);
