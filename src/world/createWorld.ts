@@ -26,7 +26,7 @@ export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
   sun.intensity = 1.05;
   sun.diffuse = new Color3(1, 0.91, 0.76);
 
-  buildEnvironment(scene);
-  createPlayer(scene, camera);
+  const obstacles = buildEnvironment(scene);
+  createPlayer(scene, camera, obstacles);
   return scene;
 }
