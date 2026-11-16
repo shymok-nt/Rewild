@@ -8,10 +8,16 @@ import type { ForestTree } from "./installOakForest";
 
 /** Decorative grass only: no colliders or physics cost. */
 export async function installGrassPatches(scene: Scene, forest: readonly ForestTree[]): Promise<void> {
-  const result = await SceneLoader.ImportMeshAsync("", "/models/", "patch_of_grass.glb", scene);
+  const result = await SceneLoader.ImportMeshAsync("", "/models/", "grass.glb", scene);
   if (scene.isDisposed) return;
   const meshes = result.meshes.filter((mesh): mesh is Mesh => mesh instanceof Mesh && mesh.getTotalVertices() > 0);
   if (!meshes.length) throw new Error("Grass GLB has no renderable meshes");
+  const vertexCount = meshes.reduce((total, mesh) => total + mesh.getTotalVertices(), 0);
+  if (vertexCount > 180000 || meshes.length > 20) {
+    for (const mesh of result.meshes) mesh.dispose(false, true);
+    console.warn("[Rewild] Grass model too complex for safe preview:", vertexCount, "vertices,", meshes.length, "parts");
+    return;
+  }
 
   const parts = meshes.map(mesh => {
     mesh.computeWorldMatrix(true);
@@ -44,7 +50,7 @@ export async function installGrassPatches(scene: Scene, forest: readonly ForestT
   };
   const created: TransformNode[] = [];
   try {
-    for (let i = 0, attempts = 0; i < 220 && attempts < 1200; attempts++) {
+    for (let i = 0, attempts = 0; i < 12 && attempts < 120; attempts++) {
       const x = (random() - 0.5) * 123;
       const z = (random() - 0.5) * 123;
       // Keep the spawn area, cabin, ruins, gathering sites and winding trail clear.
@@ -72,10 +78,6 @@ export async function installGrassPatches(scene: Scene, forest: readonly ForestT
     }
     // Hide GLB originals only once all instances are created successfully.
     for (const part of parts) part.mesh.isVisible = false;
-    // Replace the old geometric grass cones; retain colorful flowers.
-    const oldGrass = scene.meshes.filter(mesh =>
-      mesh.name === "wildflower" && mesh.material?.name === "grass-light");
-    for (const mesh of oldGrass) mesh.dispose();
     console.info("[Rewild] Grass GLB ready:", created.length, "patches");
   } catch (error) {
     for (const node of created) node.dispose(false, true);
