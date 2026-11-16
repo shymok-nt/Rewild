@@ -5,7 +5,9 @@ import "@babylonjs/core/Meshes/instancedMesh";
 import "@babylonjs/core/Meshes/thinInstanceMesh";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import type { Scene } from "@babylonjs/core/scene";
-import type { Mesh } from "@babylonjs/core/Meshes/mesh";
+import { Mesh } from "@babylonjs/core/Meshes/mesh";
+import { VertexData } from "@babylonjs/core/Meshes/mesh.vertexData";
+import type { Footprint } from "./collision";
 
 type Random = () => number;
 function seeded(seed: number): Random {
@@ -28,7 +30,7 @@ function box(scene: Scene, name: string, width: number, height: number, depth: n
   return mesh;
 }
 
-export function buildEnvironment(scene: Scene): void {
+export function buildEnvironment(scene: Scene): Footprint[] {\n  const obstacles: Footprint[] = [];
   const random = seeded(40217);
   const meadow = material(scene, "meadow-green", "#526D4B");
   const grassLight = material(scene, "grass-light", "#627D56");
@@ -66,19 +68,37 @@ export function buildEnvironment(scene: Scene): void {
     patch.material = random() > 0.5 ? grassLight : grassDark;
   }
 
-  // Winding village footpath, kept as a decorative overlay.
-  const points = [
-    new Vector3(0, 0.025, 11), new Vector3(1, 0.025, 17),
-    new Vector3(4, 0.025, 24), new Vector3(1, 0.025, 32),
-    new Vector3(-4, 0.025, 41), new Vector3(-2, 0.025, 55),
+  // A continuous curved ribbon replaces intersecting rectangular path segments.
+  const waypoints = [
+    new Vector3(0, 0.04, 10), new Vector3(1, 0.04, 17),
+    new Vector3(4, 0.04, 24), new Vector3(1, 0.04, 32),
+    new Vector3(-4, 0.04, 41), new Vector3(-2, 0.04, 55),
   ];
-  for (let i = 0; i < points.length - 1; i++) {
-    const a = points[i];
-    const b = points[i + 1];
-    const delta = b.subtract(a);
-    const strip = box(scene, "path-segment", 3.2, 0.035, delta.length(), (a.x + b.x) / 2, 0.025, (a.z + b.z) / 2, soil);
-    strip.rotation.y = Math.atan2(delta.x, delta.z);
+  const left: Vector3[] = [];
+  const right: Vector3[] = [];
+  for (let segment = 0; segment < waypoints.length - 1; segment++) {
+    for (let step = 0; step < 12; step++) {
+      const t = step / 12;
+      const a = waypoints[Math.max(0, segment - 1)];
+      const b = waypoints[segment];
+      const c = waypoints[segment + 1];
+      const d = waypoints[Math.min(waypoints.length - 1, segment + 2)];
+      const p = Vector3.CatmullRom(a, b, c, d, t);
+      const next = Vector3.CatmullRom(a, b, c, d, Math.min(1, t + 0.015));
+      const tangent = next.subtract(p).normalize();
+      const normal = new Vector3(tangent.z, 0, -tangent.x);
+      left.push(p.add(normal.scale(1.65)));
+      right.push(p.subtract(normal.scale(1.65)));
+    }
   }
+  const last = waypoints[waypoints.length - 1];
+  const previous = waypoints[waypoints.length - 2];
+  const tangent = last.subtract(previous).normalize();
+  const normal = new Vector3(tangent.z, 0, -tangent.x);
+  left.push(last.add(normal.scale(1.65)));
+  right.push(last.subtract(normal.scale(1.65)));
+  const path = MeshBuilder.CreateRibbon("continuous-footpath", { pathArray: [left, right], sideOrientation: Mesh.DOUBLESIDE }, scene);
+  path.material = soil;
 
   // Low-poly pine with three tiered crowns; thin instances keep draw calls low.
   const trunk = MeshBuilder.CreateCylinder("pine-trunk-source", { height: 3.5, diameterTop: 0.25, diameterBottom: 0.7, tessellation: 7 }, scene);
@@ -138,7 +158,7 @@ export function buildEnvironment(scene: Scene): void {
     tuft.material = random() < 0.28 ? flowers[Math.floor(random() * flowers.length)] : grassLight;
   }
 
-  // Central abandoned cottage with an actual dark doorway and readable silhouette.
+  // Central abandoned cottage with an actual dark doorway and readable silhouette.\n  obstacles.push({ x: 0, z: 0, halfWidth: 3.5, halfDepth: 2.9 });
   box(scene, "cottage-main", 7, 3.6, 5.8, 0, 1.8, 0, timber);
   box(scene, "doorway", 1.55, 2.65, 0.08, 0, 1.325, 2.94, dark);
   box(scene, "door-frame-left", 0.22, 2.8, 0.24, -0.89, 1.4, 2.98, timberLight);
@@ -157,6 +177,18 @@ export function buildEnvironment(scene: Scene): void {
   for (const side of [-1, 1]) {
     const slope = box(scene, "pitched-roof", roofLength, 0.26, 6.5, side * halfRun / 2, 3.6 + rise / 2, 0, roof);
     slope.rotation.z = -side * roofAngle;
+  }
+  // Close the front and back triangular gables beneath the roof.
+  const gableMat = material(scene, "gable-wood", "#746149");
+  gableMat.backFaceCulling = false;
+  for (const z of [-2.9, 2.9]) {
+    const gable = new Mesh("gable", scene);
+    const geometry = new VertexData();
+    geometry.positions = [-3.5, 3.6, z, 3.5, 3.6, z, 0, 5.58, z];
+    geometry.indices = [0, 1, 2];
+    geometry.normals = [0, 0, z < 0 ? -1 : 1, 0, 0, z < 0 ? -1 : 1, 0, 0, z < 0 ? -1 : 1];
+    geometry.applyToMesh(gable);
+    gable.material = gableMat;
   }
   box(scene, "chimney", 0.9, 2.1, 0.9, -2.1, 5.45, -1.3, stone);
   for (let i = 0; i < 7; i++) {
