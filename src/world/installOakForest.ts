@@ -27,7 +27,7 @@ export async function installOakForest(scene: Scene, trees: readonly ForestTree[
     placement.copyToArray(matrices, i * 16);
   });
   for (const mesh of meshes) {
-    // The uploaded asset has identity mesh transforms; keep its materials and vertex colors.
+    // Keep the GLB mesh hierarchy and materials intact; render shared thin instances.
     mesh.isPickable = false;
     mesh.thinInstanceSetBuffer("matrix", matrices, 16);
     mesh.alwaysSelectAsActiveMesh = true;
