@@ -56,7 +56,10 @@ export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: r
       const right = new Vector3(forward.z, 0, -forward.x);
       const direction = forward.scale(input.z).add(right.scale(input.x)).normalize();
       const speed = keys.has("ShiftLeft") || keys.has("ShiftRight") ? 8 : 4.5;
-      const step = direction.scale(speed * dt);\n      const next = resolveMovement(root.position.x, root.position.z, step.x, step.z, obstacles);\n      root.position.x = next.x;\n      root.position.z = next.z;
+      const step = direction.scale(speed * dt);
+      const next = resolveMovement(root.position.x, root.position.z, step.x, step.z, obstacles);
+      root.position.x = next.x;
+      root.position.z = next.z;
       root.rotation.y = Math.atan2(direction.x, direction.z);
     }
     // Ground plane is y=0. Phase 2 uses simple gravity, not a full physics engine.
