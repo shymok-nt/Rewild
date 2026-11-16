@@ -132,15 +132,20 @@ export function buildEnvironment(scene: Scene, forestTrees: ForestTree[] = []): 
     const sn = Math.sin(angle) * scale;
     return [c, 0, -sn, 0, 0, scale, 0, 0, sn, 0, c, 0, x, y, z, 1];
   };
-  for (let i = 0; i < 175; i++) {
+  const placedTrees: { x: number; z: number }[] = [];
+  for (let i = 0; i < 450 && placedTrees.length < 72; i++) {
     const x = (random() - 0.5) * 128;
     const z = (random() - 0.5) * 128;
     if (Math.abs(x) < 11 && Math.abs(z) < 15) continue;
-    if (z > 9 && z < 58 && Math.abs(x - Math.sin(z * 0.12) * 3) < 6) continue;
+    if (z > 9 && z < 58 && Math.abs(x - Math.sin(z * 0.12) * 3) < 9) continue;
+    if (placedTrees.some(tree => (tree.x - x) ** 2 + (tree.z - z) ** 2 < 10.5 ** 2)) continue;
+    // Leave dedicated harvesting locations accessible and clearly visible.
+    if ([[-6, 12], [-10, 18], [-8, 29], [7, -10]].some(([hx, hz]) => (hx - x) ** 2 + (hz - z) ** 2 < 6.5 ** 2)) continue;
+    placedTrees.push({ x, z });
     const scale = 0.75 + random() * 0.7;
     const rotation = random() * Math.PI * 2;
     forestTrees.push({ x, z, scale, rotation });
-    obstacles.push({ x, z, halfWidth: 0.75 * scale, halfDepth: 0.75 * scale });
+    obstacles.push({ x, z, halfWidth: 1.35 * scale, halfDepth: 1.35 * scale });
     transforms[0].push(...matrix(x, 4.1 * scale, z, scale, rotation));
     for (let tier = 0; tier < crowns.length; tier++) {
       const offset = 0.13 * Math.sin(rotation + tier * 2.3);
