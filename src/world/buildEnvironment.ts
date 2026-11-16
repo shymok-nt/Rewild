@@ -150,7 +150,7 @@ export function buildEnvironment(scene: Scene, forestTrees: ForestTree[] = []): 
     if (placedTrees.some(tree => Math.hypot(tree.x-x,tree.z-z) < tree.radius + crownRadius + 2.3)) continue;
     placedTrees.push({ x,z,radius:crownRadius });
     forestTrees.push({ x, z, scale, rotation });
-    obstacles.push({ x, z, halfWidth: 1.25 * scale, halfDepth: 1.25 * scale });
+    obstacles.push({ x, z, halfWidth: 1.8 * scale, halfDepth: 1.8 * scale });
     transforms[0].push(...matrix(x, 4.1 * scale, z, scale, rotation));
     for (let tier = 0; tier < crowns.length; tier++) {
       const offset = 0.13 * Math.sin(rotation + tier * 2.3);
