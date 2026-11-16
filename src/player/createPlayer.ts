@@ -50,7 +50,7 @@ export function createPlayer(scene: Scene, camera: ArcRotateCamera): void {
     const input = new Vector3(rightInput, 0, forwardInput);
     if (input.lengthSquared() > 0) {
       input.normalize();
-      const forward = new Vector3(-Math.sin(camera.alpha), 0, -Math.cos(camera.alpha));
+      const forward = new Vector3(-Math.cos(camera.alpha), 0, -Math.sin(camera.alpha));
       const right = new Vector3(forward.z, 0, -forward.x);
       const direction = forward.scale(input.z).add(right.scale(input.x)).normalize();
       const speed = keys.has("ShiftLeft") || keys.has("ShiftRight") ? 8 : 4.5;
