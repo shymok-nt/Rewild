@@ -1,9 +1,13 @@
 import type { Scene } from "@babylonjs/core/scene";
 import { Inventory, RESOURCE_LABELS } from "./inventory";
 import { createHarvestNodes, nearestHarvestNode } from "./harvesting";
-import type { TransformNode } from "@babylonjs/core/Meshes/transformNode";
+import { Color3 } from "@babylonjs/core/Maths/math.color";
+import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
+import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
+import { Vector3 } from "@babylonjs/core/Maths/math.vector";
+import type { PlayerController } from "../player/createPlayer";
 
-export function createGatheringSystem(scene: Scene, player: TransformNode): void {
+export function createGatheringSystem(scene: Scene, player: PlayerController): void {
   const inventory = new Inventory();
   const nodes = createHarvestNodes(scene);
   const panel = document.createElement("section");
@@ -23,6 +27,21 @@ export function createGatheringSystem(scene: Scene, player: TransformNode): void
   };
   renderInventory();
   let noticeUntil = 0;
+  const fragments: { mesh: ReturnType<typeof MeshBuilder.CreateBox>; velocity: Vector3; until: number }[] = [];
+  const woodParticle = new StandardMaterial("wood-chips", scene);
+  woodParticle.diffuseColor = Color3.FromHexString("#B89B70");
+  const stoneParticle = new StandardMaterial("stone-chips", scene);
+  stoneParticle.diffuseColor = Color3.FromHexString("#B4B9B0");
+  function burst(x: number, z: number, kind: "wood" | "stone"): void {
+    const now = performance.now();
+    for (let i = 0; i < 6; i++) {
+      const chip = MeshBuilder.CreateBox("harvest-chip", { size: 0.11 }, scene);
+      chip.material = kind === "wood" ? woodParticle : stoneParticle;
+      chip.position.set(x, kind === "wood" ? 1.4 : 0.6, z);
+      const angle = (i / 6) * Math.PI * 2;
+      fragments.push({ mesh: chip, velocity: new Vector3(Math.cos(angle) * 2, 2.4 + i * 0.14, Math.sin(angle) * 2), until: now + 600 });
+    }
+  }
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.repeat) return;
     if (event.code === "KeyI") {
@@ -32,10 +51,13 @@ export function createGatheringSystem(scene: Scene, player: TransformNode): void
       return;
     }
     if (event.code !== "KeyE" || !panel.hidden) return;
-    const target = nearestHarvestNode(nodes, player.position);
+    const target = nearestHarvestNode(nodes, player.root.position);
     if (!target || performance.now() < target.cooldownUntil) return;
     event.preventDefault();
+    player.harvest();
     target.remaining--;
+    target.hitUntil = performance.now() + 180;
+    burst(target.position.x, target.position.z, target.kind);
     target.cooldownUntil = performance.now() + 450;
     inventory.add(target.kind);
     renderInventory();
@@ -50,13 +72,29 @@ export function createGatheringSystem(scene: Scene, player: TransformNode): void
   window.addEventListener("keydown", onKeyDown);
   scene.onBeforeRenderObservable.add(() => {
     const now = performance.now();
+    const dt = Math.min(scene.getEngine().getDeltaTime() / 1000, 0.05);
+    for (let i = fragments.length - 1; i >= 0; i--) {
+      const fragment = fragments[i];
+      if (now >= fragment.until) {
+        fragment.mesh.dispose();
+        fragments.splice(i, 1);
+        continue;
+      }
+      fragment.velocity.y -= 10 * dt;
+      fragment.mesh.position.addInPlace(fragment.velocity.scale(dt));
+      fragment.mesh.rotation.x += dt * 6;
+    }
     for (const node of nodes) {
+      if (node.remaining > 0) {
+        node.visual.scaling.copyFrom(node.baseScale);
+        if (now < node.hitUntil) node.visual.scaling.scaleInPlace(0.91);
+      }
       if (node.remaining === 0 && now >= node.cooldownUntil) {
         node.remaining = node.maximum;
         node.visual.setEnabled(true);
       }
     }
-    const target = nearestHarvestNode(nodes, player.position);
+    const target = nearestHarvestNode(nodes, player.root.position);
     prompt.textContent = target && panel.hidden ? "[E] " + target.label + " topla (" + target.remaining + " kaldı)" : "";
     toast.style.opacity = now < noticeUntil ? "1" : "0";
   });
@@ -65,5 +103,6 @@ export function createGatheringSystem(scene: Scene, player: TransformNode): void
     panel.remove();
     prompt.remove();
     toast.remove();
+    for (const fragment of fragments) fragment.mesh.dispose();
   });
 }
