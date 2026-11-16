@@ -77,16 +77,18 @@ export function createExplorer(scene: Scene, parent: TransformNode) {
 
   let phase = 0;
   let blend = 0;
+  let harvestPhase = 0;
   return {
-    update(dt: number, moving: boolean, sprinting: boolean, airborne: boolean) {
+    update(dt: number, moving: boolean, sprinting: boolean, airborne: boolean, harvesting = false) {
       const target = moving ? 1 : 0;
       blend += (target - blend) * Math.min(1, dt * 9);
       phase += dt * (sprinting ? 12 : 8) * Math.max(blend, 0.05);
       const swing = Math.sin(phase) * blend * (sprinting ? 0.76 : 0.5);
+      if (harvesting) harvestPhase += dt * 15;
       leftLeg.rotation.x = airborne ? -0.25 : swing;
       rightLeg.rotation.x = airborne ? 0.35 : -swing;
-      leftArm.rotation.x = airborne ? -0.4 : -swing * 0.8;
-      rightArm.rotation.x = airborne ? -0.4 : swing * 0.8;
+      leftArm.rotation.x = harvesting ? -0.75 + Math.sin(harvestPhase) * 0.45 : airborne ? -0.4 : -swing * 0.8;
+      rightArm.rotation.x = harvesting ? -1.1 + Math.sin(harvestPhase) * 0.85 : airborne ? -0.4 : swing * 0.8;
       rig.position.y = airborne ? 0 : Math.abs(Math.sin(phase)) * 0.045 * blend;
       rig.rotation.z = Math.sin(phase) * 0.025 * blend;
     },
