@@ -7,6 +7,7 @@ import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { Scene } from "@babylonjs/core/scene";
 import type { Engine } from "@babylonjs/core/Engines/engine";
+import { createPlayer } from "../player/createPlayer";
 
 export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
   const scene = new Scene(engine);
@@ -73,5 +74,6 @@ export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
   roof.rotation.y = Math.PI / 2;
   roof.position.set(0, 4.2, 0);
   roof.material = roofMat;
+  createPlayer(scene, camera);
   return scene;
 }
