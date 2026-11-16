@@ -30,14 +30,14 @@ function box(scene: Scene, name: string, width: number, height: number, depth: n
 
 export function buildEnvironment(scene: Scene): void {
   const random = seeded(40217);
-  const meadow = material(scene, "meadow-green", "#65885A");
-  const grassLight = material(scene, "grass-light", "#779A61");
-  const grassDark = material(scene, "grass-dark", "#4B7551");
-  const soil = material(scene, "footpath", "#A08B68");
+  const meadow = material(scene, "meadow-green", "#526D4B");
+  const grassLight = material(scene, "grass-light", "#627D56");
+  const grassDark = material(scene, "grass-dark", "#3F6149");
+  const soil = material(scene, "footpath", "#88785D");
   const bark = material(scene, "pine-bark", "#584738");
   const pineDark = material(scene, "pine-dark", "#355D49");
   const pineMid = material(scene, "pine-mid", "#497B54");
-  const pineLight = material(scene, "pine-light", "#638B5D");
+  const pineLight = material(scene, "pine-light", "#52765B");
   const stone = material(scene, "slate", "#7D8580");
   const stoneLight = material(scene, "slate-light", "#9BA39A");
   const timber = material(scene, "weathered-timber", "#806B50");
@@ -148,11 +148,17 @@ export function buildEnvironment(scene: Scene): void {
     box(scene, "window", 1.15, 1.1, 0.08, x, 2.05, 2.95, dark);
     box(scene, "window-sill", 1.4, 0.18, 0.34, x, 1.48, 3.02, timberLight);
   }
+  // Each roof half meets at the ridge and extends just beyond the walls.
+  // The roof spans 7m horizontally with a 2.15m rise.
+  const halfRun = 3.8;
+  const rise = 2.15;
+  const roofLength = Math.hypot(halfRun, rise);
+  const roofAngle = Math.atan2(rise, halfRun);
   for (const side of [-1, 1]) {
-    const slope = box(scene, "pitched-roof", 4.8, 0.35, 6.8, side * 1.85, 4.5, 0, roof);
-    slope.rotation.z = side * 0.55;
+    const slope = box(scene, "pitched-roof", roofLength, 0.26, 6.5, side * halfRun / 2, 3.6 + rise / 2, 0, roof);
+    slope.rotation.z = -side * roofAngle;
   }
-  box(scene, "chimney", 0.9, 2.1, 0.9, -2.1, 5.1, -1.3, stone);
+  box(scene, "chimney", 0.9, 2.1, 0.9, -2.1, 5.45, -1.3, stone);
   for (let i = 0; i < 7; i++) {
     const x = -3.8 + i * 1.25;
     box(scene, "fence-post", 0.22, 1.25, 0.22, x, 0.625, 7.3, timberLight);
