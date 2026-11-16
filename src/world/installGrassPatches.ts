@@ -32,43 +32,39 @@ export async function installGrassPatches(scene: Scene, forest: readonly ForestT
   const width = Math.max(max.x - min.x, max.z - min.z, 0.001);
   const baseScale = Math.min(4, Math.max(0.015, 1.3 / width));
   const center = new Vector3((min.x + max.x) / 2, min.y, (min.z + max.z) / 2);
-  // Thin instances draw all copies of a part in a single batch.
-  // Cap total transformed vertices to avoid the previous browser crash.
-  const count = Math.max(90, Math.min(700, Math.floor(2600000 / Math.max(vertices, 1))));
+  // Generate coverage for the entire 140 x 140 meadow, not just the spawn.
+  // Only a bounded set near the player is ever uploaded to the GPU.
+  const visibleLimit = Math.min(480, Math.max(32, Math.floor(1600000 / Math.max(vertices, 1))));
+  const cellSize = 3.3;
   let state = 745123;
   const random = () => {
     state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
     return state / 4294967296;
   };
-  const transforms: Matrix[] = [];
-  for (let attempts = 0; transforms.length < count && attempts < count * 30; attempts++) {
-    const i = transforms.length;
-    const near = i < Math.floor(count * 0.65);
-    const angle = random() * Math.PI * 2;
-    const radius = 4 + Math.sqrt(random()) * 27;
-    const x = near ? Math.cos(angle) * radius : (random() - 0.5) * 125;
-    const z = near ? 9 + Math.sin(angle) * radius : (random() - 0.5) * 125;
-    if (Math.abs(x) < 4.3 && Math.abs(z) < 7.5) continue;
-    if (Math.abs(x + 12) < 8 && Math.abs(z - 46) < 7) continue;
-    if (z >= 8 && z <= 58 && Math.abs(x - Math.sin(z * 0.12) * 3) < 2.5) continue;
-    if (forest.some(tree => Math.hypot(x - tree.x, z - tree.z) < 1.5 * tree.scale)) continue;
-    const scale = baseScale * (0.7 + random() * 0.65);
-    const offset = Matrix.Translation(-center.x, -center.y, -center.z);
-    const placement = Matrix.Compose(
-      new Vector3(scale, scale, scale),
-      Quaternion.RotationAxis(Vector3.Up(), random() * Math.PI * 2),
-      new Vector3(x, 0.025, z),
-    );
-    transforms.push(offset.multiply(placement));
+  const candidates: { x: number; z: number; transform: Matrix }[] = [];
+  const offset = Matrix.Translation(-center.x, -center.y, -center.z);
+  for (let gx = -20; gx <= 20; gx++) {
+    for (let gz = -20; gz <= 20; gz++) {
+      const x = gx * cellSize + (random() - 0.5) * 1.8;
+      const z = gz * cellSize + (random() - 0.5) * 1.8;
+      if (Math.abs(x) > 68 || Math.abs(z) > 68) continue;
+      if (Math.abs(x) < 4.3 && Math.abs(z) < 7.5) continue;
+      if (Math.abs(x + 12) < 8 && Math.abs(z - 46) < 7) continue;
+      if (z >= 8 && z <= 58 && Math.abs(x - Math.sin(z * 0.12) * 3) < 2.5) continue;
+      if (forest.some(tree => Math.hypot(x - tree.x, z - tree.z) < 1.5 * tree.scale)) continue;
+      const scale = baseScale * (0.7 + random() * 0.65);
+      const placement = Matrix.Compose(
+        new Vector3(scale, scale, scale),
+        Quaternion.RotationAxis(Vector3.Up(), random() * Math.PI * 2),
+        new Vector3(x, 0.025, z),
+      );
+      candidates.push({ x, z, transform: offset.multiply(placement) });
+    }
   }
 
+  // Preserve the imported geometry and materials; the original node hierarchy
+  // is baked into each thin instance matrix.
   for (const part of parts) {
-    // Remove imported hierarchy transforms from the source, preserving them
-    // in each thin-instance matrix instead.
-    const matrices = new Float32Array(transforms.length * 16);
-    transforms.forEach((placement, i) => {
-      part.originalWorld.multiply(placement).copyToArray(matrices, i * 16);
-    });
     part.mesh.parent = null;
     part.mesh.position.set(0, 0, 0);
     part.mesh.rotation.set(0, 0, 0);
@@ -76,7 +72,41 @@ export async function installGrassPatches(scene: Scene, forest: readonly ForestT
     part.mesh.scaling.setAll(1);
     part.mesh.isPickable = false;
     part.mesh.alwaysSelectAsActiveMesh = true;
-    part.mesh.thinInstanceSetBuffer("matrix", matrices, 16, true);
   }
-  console.info("[Rewild] Grass thin instances:", transforms.length, "patches,", vertices, "vertices per source");
+
+  let previousX = Infinity;
+  let previousZ = Infinity;
+  const update = () => {
+    if (scene.isDisposed) return;
+    const target = scene.getTransformNodeByName("player-root");
+    const x = target?.position.x ?? 0;
+    const z = target?.position.z ?? 9;
+    if (Math.hypot(x - previousX, z - previousZ) < 4) return;
+    previousX = x;
+    previousZ = z;
+    const radiusSquared = 34 * 34;
+    const visible = candidates
+      .filter(patch => (patch.x - x) ** 2 + (patch.z - z) ** 2 < radiusSquared)
+      .sort((a, b) => ((a.x - x) ** 2 + (a.z - z) ** 2) -
+        ((b.x - x) ** 2 + (b.z - z) ** 2))
+      .slice(0, visibleLimit);
+    for (const part of parts) {
+      const matrices = new Float32Array(visible.length * 16);
+      visible.forEach((patch, i) => {
+        part.originalWorld.multiply(patch.transform).copyToArray(matrices, i * 16);
+      });
+      part.mesh.thinInstanceSetBuffer("matrix", matrices, 16, true);
+    }
+  };
+  update();
+  let elapsed = 0;
+  const observer = scene.onBeforeRenderObservable.add(() => {
+    elapsed += Math.min(scene.getEngine().getDeltaTime() / 1000, 0.1);
+    if (elapsed < 0.4) return;
+    elapsed = 0;
+    update();
+  });
+  scene.onDisposeObservable.add(() => scene.onBeforeRenderObservable.remove(observer));
+  console.info("[Rewild] Grass coverage:", candidates.length,
+    "world patches; GPU limit:", visibleLimit, "source vertices:", vertices);
 }
