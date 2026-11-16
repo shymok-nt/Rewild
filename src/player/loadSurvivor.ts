@@ -11,6 +11,9 @@ import type { AnimationGroup } from "@babylonjs/core/Animations/animationGroup";
  */
 export async function loadSurvivor(scene: Scene, parent: TransformNode) {
   const result = await SceneLoader.ImportMeshAsync("", "/models/", "survivor_character.glb", scene);
+  if (!result.meshes.some(mesh => mesh.getTotalVertices() > 0)) {
+    throw new Error("Survivor GLB has no visible mesh geometry");
+  }
   const anchor = new TransformNode("survivor-model-anchor", scene);
   anchor.parent = parent;
   for (const node of result.meshes) {
