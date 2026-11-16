@@ -30,7 +30,8 @@ function box(scene: Scene, name: string, width: number, height: number, depth: n
   return mesh;
 }
 
-export function buildEnvironment(scene: Scene): Footprint[] {\n  const obstacles: Footprint[] = [];
+export function buildEnvironment(scene: Scene): Footprint[] {
+  const obstacles: Footprint[] = [];
   const random = seeded(40217);
   const meadow = material(scene, "meadow-green", "#526D4B");
   const grassLight = material(scene, "grass-light", "#627D56");
