@@ -121,6 +121,7 @@ export function buildEnvironment(scene: Scene): Footprint[] {
     if (Math.abs(x) < 11 && Math.abs(z) < 15) continue;
     if (z > 9 && z < 58 && Math.abs(x - Math.sin(z * 0.12) * 3) < 6) continue;
     const s = 0.75 + random() * 0.7;
+    obstacles.push({ x, z, halfWidth: 0.27 * s, halfDepth: 0.27 * s });
     transforms[0].push(...matrix(x, 1.75 * s, z, s));
     for (let tier = 0; tier < 3; tier++) {
       transforms[tier + 1].push(...matrix(x, (3.4 + tier * 1.05) * s, z, s));
@@ -141,6 +142,7 @@ export function buildEnvironment(scene: Scene): Footprint[] {
     if (Math.abs(x) < 7 && Math.abs(z) < 10) continue;
     const rock = rockBase.createInstance("rock-" + i);
     const size = 0.35 + random() * 1.5;
+    if (size > 0.95) obstacles.push({ x, z, halfWidth: size * 0.56, halfDepth: size * 0.4 });
     rock.position.set(x, size * 0.28, z);
     rock.scaling.set(size * 1.4, size * 0.55, size);
     rock.rotation.y = random() * Math.PI;
@@ -203,4 +205,8 @@ export function buildEnvironment(scene: Scene): Footprint[] {
   box(scene, "ruin-wall-a", 7, 2.8, 0.7, -12, 1.4, 47, stoneLight);
   box(scene, "ruin-wall-b", 0.7, 2.8, 6, -15.2, 1.4, 44, stone);
   box(scene, "ruin-pillar", 1.1, 4.2, 1.1, -8.9, 2.1, 47, stone);
+  obstacles.push({ x: -12, z: 47, halfWidth: 3.5, halfDepth: 0.35 });
+  obstacles.push({ x: -15.2, z: 44, halfWidth: 0.35, halfDepth: 3 });
+  obstacles.push({ x: -8.9, z: 47, halfWidth: 0.55, halfDepth: 0.55 });
+  return obstacles;
 }
