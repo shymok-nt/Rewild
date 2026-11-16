@@ -140,7 +140,7 @@ export function buildEnvironment(scene: Scene, forestTrees: ForestTree[] = []): 
     const scale = 0.75 + random() * 0.7;
     const rotation = random() * Math.PI * 2;
     forestTrees.push({ x, z, scale, rotation });
-    obstacles.push({ x, z, halfWidth: 0.27 * scale, halfDepth: 0.27 * scale });
+    obstacles.push({ x, z, halfWidth: 0.75 * scale, halfDepth: 0.75 * scale });
     transforms[0].push(...matrix(x, 4.1 * scale, z, scale, rotation));
     for (let tier = 0; tier < crowns.length; tier++) {
       const offset = 0.13 * Math.sin(rotation + tier * 2.3);
