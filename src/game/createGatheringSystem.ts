@@ -27,6 +27,25 @@ export function createGatheringSystem(scene: Scene, player: PlayerController): v
   };
   renderInventory();
   let noticeUntil = 0;
+  let audio: AudioContext | null = null;
+  function playImpact(kind: "wood" | "stone"): void {
+    try {
+      audio ??= new AudioContext();
+      if (audio.state === "suspended") void audio.resume();
+      const oscillator = audio.createOscillator();
+      const volume = audio.createGain();
+      const now = audio.currentTime;
+      oscillator.type = kind === "wood" ? "triangle" : "sine";
+      oscillator.frequency.setValueAtTime(kind === "wood" ? 160 : 390, now);
+      oscillator.frequency.exponentialRampToValueAtTime(kind === "wood" ? 75 : 170, now + 0.11);
+      volume.gain.setValueAtTime(0.06, now);
+      volume.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+      oscillator.connect(volume);
+      volume.connect(audio.destination);
+      oscillator.start(now);
+      oscillator.stop(now + 0.15);
+    } catch { /* Audio is optional; harvesting must still work. */ }
+  }
   const fragments: { mesh: ReturnType<typeof MeshBuilder.CreateBox>; velocity: Vector3; until: number }[] = [];
   const woodParticle = new StandardMaterial("wood-chips", scene);
   woodParticle.diffuseColor = Color3.FromHexString("#B89B70");
@@ -55,6 +74,7 @@ export function createGatheringSystem(scene: Scene, player: PlayerController): v
     if (!target || performance.now() < target.cooldownUntil) return;
     event.preventDefault();
     player.harvest();
+    playImpact(target.kind);
     target.remaining--;
     target.hitUntil = performance.now() + 180;
     burst(target.position.x, target.position.z, target.kind);
@@ -104,5 +124,6 @@ export function createGatheringSystem(scene: Scene, player: PlayerController): v
     prompt.remove();
     toast.remove();
     for (const fragment of fragments) fragment.mesh.dispose();
+    if (audio) void audio.close();
   });
 }
