@@ -36,7 +36,6 @@ export function buildEnvironment(scene: Scene, forestTrees: ForestTree[] = []): 
   const random = seeded(40217);
   const meadow = material(scene, "meadow-green", "#526D4B");
   const grassLight = material(scene, "grass-light", "#627D56");
-  const grassDark = material(scene, "grass-dark", "#3F6149");
   const soil = material(scene, "footpath", "#88785D");
   const bark = material(scene, "pine-bark", "#584738");
   const pineDark = material(scene, "pine-dark", "#355D49");
@@ -57,20 +56,7 @@ export function buildEnvironment(scene: Scene, forestTrees: ForestTree[] = []): 
   const ground = MeshBuilder.CreateGround("walkable-meadow", { width: 140, height: 140, subdivisions: 4 }, scene);
   ground.material = meadow;
 
-  // The walkable surface stays level because the current player controller uses y=0.
-  // Slightly raised ground patches add visual variation without breaking movement.
-  for (let i = 0; i < 48; i++) {
-    const x = (random() - 0.5) * 125;
-    const z = (random() - 0.5) * 125;
-    if (Math.abs(x) < 9 && Math.abs(z) < 11) continue;
-    const patch = MeshBuilder.CreateDisc("meadow-patch", { radius: 1, tessellation: 12 }, scene);
-    patch.rotation.x = Math.PI / 2;
-    patch.scaling.set(3 + random() * 8, 2 + random() * 6, 1);
-    patch.position.set(x, 0.012, z);
-    patch.material = random() > 0.5 ? grassLight : grassDark;
-  }
-
-  // A continuous curved ribbon replaces intersecting rectangular path segments.
+  // Keep a single coplanar-safe ground surface. The old overlapping meadow\n  // discs caused depth-buffer flickering when the camera moved.\n\n  // A continuous curved ribbon replaces intersecting rectangular path segments.
   const waypoints = [
     new Vector3(0, 0.04, 10), new Vector3(1, 0.04, 17),
     new Vector3(4, 0.04, 24), new Vector3(1, 0.04, 32),
