@@ -132,20 +132,25 @@ export function buildEnvironment(scene: Scene, forestTrees: ForestTree[] = []): 
     const sn = Math.sin(angle) * scale;
     return [c, 0, -sn, 0, 0, scale, 0, 0, sn, 0, c, 0, x, y, z, 1];
   };
-  const placedTrees: { x: number; z: number }[] = [];
-  for (let i = 0; i < 450 && placedTrees.length < 72; i++) {
+  const placedTrees: { x: number; z: number; radius: number }[] = [];
+  const resourceSites = [[-6,12],[-10,18],[-8,29],[7,-10],[7,12],[11,19],[9,33],[-9,-12]];
+  const protectedArea = (x: number, z: number, radius: number) =>
+    (Math.abs(x) < 5.2 + radius && Math.abs(z) < 8.7 + radius) ||
+    (Math.abs(x + 12) < 6.5 + radius && Math.abs(z - 46) < 6 + radius) ||
+    (Math.hypot(x, z - 9) < 5 + radius) ||
+    resourceSites.some(([rx,rz]) => Math.hypot(x-rx,z-rz) < 2.5 + radius);
+  for (let i = 0; i < 900 && placedTrees.length < 62; i++) {
     const x = (random() - 0.5) * 128;
     const z = (random() - 0.5) * 128;
-    if (Math.abs(x) < 11 && Math.abs(z) < 15) continue;
-    if (z > 9 && z < 58 && Math.abs(x - Math.sin(z * 0.12) * 3) < 9) continue;
-    if (placedTrees.some(tree => (tree.x - x) ** 2 + (tree.z - z) ** 2 < 10.5 ** 2)) continue;
-    // Leave dedicated harvesting locations accessible and clearly visible.
-    if ([[-6, 12], [-10, 18], [-8, 29], [7, -10]].some(([hx, hz]) => (hx - x) ** 2 + (hz - z) ** 2 < 6.5 ** 2)) continue;
-    placedTrees.push({ x, z });
-    const scale = 0.75 + random() * 0.7;
+    const scale = 0.78 + random() * 0.42;
     const rotation = random() * Math.PI * 2;
+    const crownRadius = 3.9 * scale;
+    if (protectedArea(x,z,crownRadius)) continue;
+    if (z > 8 && z < 59 && Math.abs(x - Math.sin(z * 0.12) * 3) < 5.5 + crownRadius) continue;
+    if (placedTrees.some(tree => Math.hypot(tree.x-x,tree.z-z) < tree.radius + crownRadius + 2.3)) continue;
+    placedTrees.push({ x,z,radius:crownRadius });
     forestTrees.push({ x, z, scale, rotation });
-    obstacles.push({ x, z, halfWidth: 1.35 * scale, halfDepth: 1.35 * scale });
+    obstacles.push({ x, z, halfWidth: 1.25 * scale, halfDepth: 1.25 * scale });
     transforms[0].push(...matrix(x, 4.1 * scale, z, scale, rotation));
     for (let tier = 0; tier < crowns.length; tier++) {
       const offset = 0.13 * Math.sin(rotation + tier * 2.3);
