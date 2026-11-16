@@ -31,10 +31,10 @@ export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
 
   const forestTrees: ForestTree[] = [];
   const obstacles = buildEnvironment(scene, forestTrees);
-  void installOakForest(scene, forestTrees).catch(error => {
+  const player = createPlayer(scene, camera, obstacles);
+  const harvestNodes = createGatheringSystem(scene, player, obstacles);
+  void installOakForest(scene, forestTrees, harvestNodes).catch(error => {
     console.warn("Oak model unavailable; keeping procedural forest.", error);
   });
-  const player = createPlayer(scene, camera, obstacles);
-  createGatheringSystem(scene, player);
   return scene;
 }
