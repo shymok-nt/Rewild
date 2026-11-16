@@ -122,7 +122,7 @@ export function buildEnvironment(scene: Scene): void {
     rock.scaling.set(size * 1.4, size * 0.55, size);
     rock.rotation.y = random() * Math.PI;
   }
-  rockBase.setEnabled(false);
+  rockBase.isVisible = false;
 
   // Flower and grass clusters: compact, deterministic and inexpensive.
   for (let i = 0; i < 150; i++) {
