@@ -5,8 +5,10 @@ import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { Color3 } from "@babylonjs/core/Maths/math.color";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import type { Scene } from "@babylonjs/core/scene";
+import { resolveMovement } from "../world/collision";
+import type { Footprint } from "../world/collision";
 
-export function createPlayer(scene: Scene, camera: ArcRotateCamera): void {
+export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: readonly Footprint[]): void {
   const root = new TransformNode("player-root", scene);
   root.position.set(0, 0, 9);
   const outfit = new StandardMaterial("outfit", scene);
@@ -54,7 +56,7 @@ export function createPlayer(scene: Scene, camera: ArcRotateCamera): void {
       const right = new Vector3(forward.z, 0, -forward.x);
       const direction = forward.scale(input.z).add(right.scale(input.x)).normalize();
       const speed = keys.has("ShiftLeft") || keys.has("ShiftRight") ? 8 : 4.5;
-      root.position.addInPlace(direction.scale(speed * dt));
+      const step = direction.scale(speed * dt);\n      const next = resolveMovement(root.position.x, root.position.z, step.x, step.z, obstacles);\n      root.position.x = next.x;\n      root.position.z = next.z;
       root.rotation.y = Math.atan2(direction.x, direction.z);
     }
     // Ground plane is y=0. Phase 2 uses simple gravity, not a full physics engine.
