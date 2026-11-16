@@ -8,6 +8,8 @@ import type { Engine } from "@babylonjs/core/Engines/engine";
 import { createPlayer } from "../player/createPlayer";
 import { buildEnvironment } from "./buildEnvironment";
 import { createGatheringSystem } from "../game/createGatheringSystem";
+import { installOakForest } from "./installOakForest";
+import type { ForestTree } from "./installOakForest";
 
 export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
   const scene = new Scene(engine);
@@ -27,7 +29,11 @@ export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
   sun.intensity = 1.05;
   sun.diffuse = new Color3(1, 0.91, 0.76);
 
-  const obstacles = buildEnvironment(scene);
+  const forestTrees: ForestTree[] = [];
+  const obstacles = buildEnvironment(scene, forestTrees);
+  void installOakForest(scene, forestTrees).catch(error => {
+    console.warn("Oak model unavailable; keeping procedural forest.", error);
+  });
   const player = createPlayer(scene, camera, obstacles);
   createGatheringSystem(scene, player);
   return scene;
