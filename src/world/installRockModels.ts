@@ -2,6 +2,7 @@ import "@babylonjs/loaders/glTF";
 import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
+import { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 import type { Scene } from "@babylonjs/core/scene";
 import type { HarvestNode } from "../game/harvesting";
 
@@ -35,7 +36,7 @@ export async function installRockModels(scene: Scene, nodes: readonly HarvestNod
   const originals = scene.meshes.filter(mesh => mesh.name.startsWith("rock-") && mesh.name !== "rock-source");
   // The source rock is about 8 world units wide; scale to original boulder size.
   for (const original of originals) {
-    if (!(original instanceof Mesh)) continue;
+    if (!(original instanceof AbstractMesh)) continue;
     const anchor = create("glb-" + original.name, new TransformNode("rock-placement-" + original.name, scene), 0.18);
     anchor.parent!.position.copyFrom(original.position);
     anchor.parent!.rotation.copyFrom(original.rotation);
