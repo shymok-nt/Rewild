@@ -174,16 +174,22 @@ export function buildEnvironment(scene: Scene, forestTrees: ForestTree[] = []): 
   // Pebbles and boulders.
   const rockBase = MeshBuilder.CreateSphere("rock-source", { diameter: 1, segments: 5 }, scene);
   rockBase.material = stone;
-  for (let i = 0; i < 85; i++) {
-    const x = (random() - 0.5) * 130;
-    const z = (random() - 0.5) * 130;
-    if (Math.abs(x) < 7 && Math.abs(z) < 10) continue;
-    const rock = rockBase.createInstance("rock-" + i);
-    const size = 0.35 + random() * 1.5;
-    if (size > 0.95) obstacles.push({ x, z, halfWidth: size * 0.56, halfDepth: size * 0.4 });
+  const placedRocks: { x: number; z: number; radius: number }[] = [];
+  for (let i = 0; i < 450 && placedRocks.length < 45; i++) {
+    const x = (random() - 0.5) * 124;
+    const z = (random() - 0.5) * 124;
+    const size = 0.65 + random() * 1.1;
+    const radius = size * 0.8;
+    if (protectedArea(x,z,radius + 1.4)) continue;
+    if (z > 8 && z < 59 && Math.abs(x - Math.sin(z * 0.12) * 3) < 5.5 + radius) continue;
+    if (placedTrees.some(tree => Math.hypot(tree.x-x,tree.z-z) < tree.radius * 0.5 + radius + 1.2)) continue;
+    if (placedRocks.some(rock => Math.hypot(rock.x-x,rock.z-z) < rock.radius + radius + 1.2)) continue;
+    placedRocks.push({x,z,radius});
+    const rock = rockBase.createInstance("rock-" + placedRocks.length);
     rock.position.set(x, size * 0.28, z);
     rock.scaling.set(size * 1.4, size * 0.55, size);
     rock.rotation.y = random() * Math.PI;
+    obstacles.push({x,z,halfWidth:size * 0.72,halfDepth:size * 0.52});
   }
   rockBase.isVisible = false;
 
@@ -238,6 +244,7 @@ export function buildEnvironment(scene: Scene, forestTrees: ForestTree[] = []): 
     box(scene, "fence-post", 0.22, 1.25, 0.22, x, 0.625, 7.3, timberLight);
   }
   box(scene, "fence-rail", 8, 0.17, 0.17, 0, 0.87, 7.3, timber);
+  obstacles.push({ x: 0, z: 7.3, halfWidth: 4.1, halfDepth: 0.16 });
 
   // Distant ruins mark an exploration destination beyond the path.
   box(scene, "ruin-wall-a", 7, 2.8, 0.7, -12, 1.4, 47, stoneLight);
