@@ -10,6 +10,7 @@ import { loadSurvivor } from "./loadSurvivor";
 export interface PlayerController {
   root: TransformNode;
   harvest(): void;
+  isHarvesting(): boolean;
 }
 
 export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: readonly Footprint[]): PlayerController {
@@ -90,5 +91,5 @@ export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: r
     window.removeEventListener("blur", onBlur);
     model?.dispose();
   });
-  return { root, harvest: () => { harvestUntil = performance.now() + 550; } };
+  return { root, harvest: () => { harvestUntil = performance.now() + 550; }, isHarvesting: () => performance.now() < harvestUntil };
 }
