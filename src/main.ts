@@ -1,5 +1,8 @@
 import "@babylonjs/core/Shaders/default.vertex";
 import "@babylonjs/core/Shaders/default.fragment";
+// glTF assets use PBRMaterial, which needs its own vertex/fragment shader pair.
+import "@babylonjs/core/Shaders/pbr.vertex";
+import "@babylonjs/core/Shaders/pbr.fragment";
 // GLB textures and environment decoding require these shader registrations.
 // Without them Babylon requests shader URLs and Vite returns index.html.
 import "@babylonjs/core/Shaders/postprocess.vertex";
