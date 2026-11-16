@@ -7,7 +7,7 @@ import type { HarvestNode } from "../game/harvesting";
 
 /** Swap existing stone visuals for the supplied GLB; retain colliders and harvesting. */
 export async function installRockModels(scene: Scene, nodes: readonly HarvestNode[]): Promise<void> {
-  const result = await SceneLoader.ImportMeshAsync("", "/models/", "rewild_rock.glb", scene);
+  const result = await SceneLoader.ImportMeshAsync("", "/models/", "rock.glb", scene);
   if (scene.isDisposed) return;
   const meshes = result.meshes.filter((mesh): mesh is Mesh => mesh instanceof Mesh && mesh.getTotalVertices() > 0);
   if (!meshes.length) throw new Error("Rock GLB has no renderable meshes");
