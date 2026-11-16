@@ -6,10 +6,19 @@ import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import type { PlayerController } from "../player/createPlayer";
+import type { Footprint } from "../world/collision";
+import type { HarvestNode } from "./harvesting";
 
-export function createGatheringSystem(scene: Scene, player: PlayerController): void {
+export function createGatheringSystem(scene: Scene, player: PlayerController, obstacles: Footprint[]): HarvestNode[] {
   const inventory = new Inventory();
   const nodes = createHarvestNodes(scene);
+  const trunkColliders = new Map<string, Footprint>();
+  for (const node of nodes) {
+    if (node.kind !== "wood") continue;
+    const footprint: Footprint = { x: node.position.x, z: node.position.z, halfWidth: 0.62, halfDepth: 0.62 };
+    obstacles.push(footprint);
+    trunkColliders.set(node.id, footprint);
+  }
   const panel = document.createElement("section");
   panel.id = "rewild-inventory";
   panel.setAttribute("aria-label", "Envanter");
@@ -85,6 +94,11 @@ export function createGatheringSystem(scene: Scene, player: PlayerController): v
     noticeUntil = performance.now() + 1250;
     if (target.remaining <= 0) {
       target.visual.setEnabled(false);
+      const collider = trunkColliders.get(target.id);
+      if (collider) {
+        const index = obstacles.indexOf(collider);
+        if (index >= 0) obstacles.splice(index, 1);
+      }
       // Depleted nodes regenerate after 30 seconds, preserving gameplay availability.
       target.cooldownUntil = performance.now() + 30000;
     }
@@ -112,6 +126,8 @@ export function createGatheringSystem(scene: Scene, player: PlayerController): v
       if (node.remaining === 0 && now >= node.cooldownUntil) {
         node.remaining = node.maximum;
         node.visual.setEnabled(true);
+        const collider = trunkColliders.get(node.id);
+        if (collider && !obstacles.includes(collider)) obstacles.push(collider);
       }
     }
     const target = nearestHarvestNode(nodes, player.root.position);
@@ -126,4 +142,5 @@ export function createGatheringSystem(scene: Scene, player: PlayerController): v
     for (const fragment of fragments) fragment.mesh.dispose();
     if (audio) void audio.close();
   });
+  return nodes;
 }
