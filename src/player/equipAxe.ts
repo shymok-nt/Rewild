@@ -6,17 +6,16 @@ import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import type { Scene } from "@babylonjs/core/scene";
 
 /** Preview equipment. Keeps the tool at hand height and scales by real bounds. */
-export async function equipAxe(scene: Scene, player: TransformNode): Promise<void> {
+export async function equipAxe(scene: Scene, player: TransformNode, isHarvesting: () => boolean = () => false): Promise<void> {
   const result = await SceneLoader.ImportMeshAsync("", "/models/", "Axe.glb", scene);
   if (scene.isDisposed) return;
   const meshes = result.meshes.filter((m): m is Mesh => m instanceof Mesh && m.getTotalVertices() > 0);
   if (!meshes.length) throw new Error("Axe GLB has no visible geometry");
   const anchor = new TransformNode("equipped-axe", scene);
-  const rightArm = scene.getTransformNodeByName("right-arm-pivot");
-  // Follow the animated arm, not the character torso.
-  const animatedHand = rightArm && rightArm.isEnabled() ? rightArm : null;
-  anchor.parent = animatedHand ?? player;
-  anchor.position.set(animatedHand ? 0 : 0.48, animatedHand ? -0.65 : 1.08, 0.05);
+  // The procedural explorer is hidden after survivor_character.glb loads.
+  // Never parent equipment to its hidden arm: it makes the axe disappear.
+  anchor.parent = player;
+  anchor.position.set(0.53, 1.03, 0.22);
   anchor.rotation.set(0, 0, 0);
   const content = new TransformNode("axe-model-offset", scene);
   content.parent = anchor;
@@ -49,7 +48,9 @@ export async function equipAxe(scene: Scene, player: TransformNode): Promise<voi
   let elapsed = 0;
   const observer = scene.onBeforeRenderObservable.add(() => {
     elapsed += Math.min(scene.getEngine().getDeltaTime() / 1000, 0.05);
-    anchor.rotation.z = Math.sin(elapsed * 2.4) * 0.012;
+    const chopping = isHarvesting();
+    anchor.rotation.x = chopping ? -0.65 + Math.sin(elapsed * 21) * 0.65 : 0;
+    anchor.rotation.z = chopping ? -0.15 : Math.sin(elapsed * 2.4) * 0.012;
   });
   scene.onDisposeObservable.add(() => {
     scene.onBeforeRenderObservable.remove(observer);
