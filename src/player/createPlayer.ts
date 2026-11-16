@@ -6,7 +6,12 @@ import { resolveMovement } from "../world/collision";
 import type { Footprint } from "../world/collision";
 import { createExplorer } from "./createExplorer";
 
-export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: readonly Footprint[]): TransformNode {
+export interface PlayerController {
+  root: TransformNode;
+  harvest(): void;
+}
+
+export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: readonly Footprint[]): PlayerController {
   const root = new TransformNode("player-root", scene);
   root.position.set(0, 0, 9);
   const explorer = createExplorer(scene, root);
@@ -30,6 +35,7 @@ export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: r
   window.addEventListener("keyup", onUp);
   window.addEventListener("blur", onBlur);
 
+  let harvestUntil = 0;
   let verticalVelocity = 0;
   let grounded = true;
   scene.onBeforeRenderObservable.add(() => {
@@ -65,7 +71,7 @@ export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: r
         grounded = true;
       }
     }
-    explorer.update(dt, moving, sprinting, !grounded);
+    explorer.update(dt, moving, sprinting, !grounded, performance.now() < harvestUntil);
     root.position.x = Math.max(-68, Math.min(68, root.position.x));
     root.position.z = Math.max(-68, Math.min(68, root.position.z));
   });
@@ -74,5 +80,5 @@ export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: r
     window.removeEventListener("keyup", onUp);
     window.removeEventListener("blur", onBlur);
   });
-  return root;
+  return { root, harvest: () => { harvestUntil = performance.now() + 550; } };
 }
