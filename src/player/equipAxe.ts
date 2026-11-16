@@ -9,7 +9,7 @@ import type { Scene } from "@babylonjs/core/scene";
  * GLB rig, walk/run animations and harvesting mechanics remain unchanged.
  */
 export async function equipAxe(scene: Scene, player: TransformNode): Promise<void> {
-  const result = await SceneLoader.ImportMeshAsync("", "/models/", "rewild_axe.glb", scene);
+  const result = await SceneLoader.ImportMeshAsync("", "/models/", "Axe.glb", scene);
   if (scene.isDisposed) return;
   const anchor = new TransformNode("equipped-axe", scene);
   anchor.parent = player;
