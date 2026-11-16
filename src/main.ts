@@ -1,5 +1,9 @@
 import "@babylonjs/core/Shaders/default.vertex";
 import "@babylonjs/core/Shaders/default.fragment";
+// GLB textures and environment decoding require these shader registrations.
+// Without them Babylon requests shader URLs and Vite returns index.html.
+import "@babylonjs/core/Shaders/postprocess.vertex";
+import "@babylonjs/core/Shaders/rgbdDecode.fragment";
 import { Engine } from "@babylonjs/core/Engines/engine";
 import { createWorld } from "./world/createWorld";
 import "./style.css";
