@@ -48,11 +48,18 @@ export async function installGrassPatches(scene: Scene, forest: readonly ForestT
     state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
     return state / 4294967296;
   };
+  // Scale density to actual model complexity to limit GPU and browser memory use.
+  const targetCount = vertexCount <= 12000 ? 96 : vertexCount <= 40000 ? 48 : 20;
   const created: TransformNode[] = [];
   try {
-    for (let i = 0, attempts = 0; i < 12 && attempts < 120; attempts++) {
-      const x = (random() - 0.5) * 123;
-      const z = (random() - 0.5) * 123;
+    for (let i = 0, attempts = 0; i < targetCount && attempts < targetCount * 18; attempts++) {
+      // Half the grass is concentrated around the starting area; the rest
+      // decorates the wider meadow. This prevents an empty-looking spawn.
+      const nearSpawn = i < Math.floor(targetCount / 2);
+      const angle = random() * Math.PI * 2;
+      const radius = 7 + Math.sqrt(random()) * 23;
+      const x = nearSpawn ? Math.cos(angle) * radius : (random() - 0.5) * 123;
+      const z = nearSpawn ? 9 + Math.sin(angle) * radius : (random() - 0.5) * 123;
       // Keep the spawn area, cabin, ruins, gathering sites and winding trail clear.
       if (Math.abs(x) < 7 && Math.abs(z) < 12) continue;
       if (Math.abs(x + 12) < 9 && Math.abs(z - 46) < 8) continue;
@@ -78,7 +85,7 @@ export async function installGrassPatches(scene: Scene, forest: readonly ForestT
     }
     // Hide GLB originals only once all instances are created successfully.
     for (const part of parts) part.mesh.isVisible = false;
-    console.info("[Rewild] Grass GLB ready:", created.length, "patches");
+    console.info("[Rewild] Grass GLB ready:", created.length, "patches,", vertexCount, "source vertices");
   } catch (error) {
     for (const node of created) node.dispose(false, true);
     for (const mesh of result.meshes) mesh.dispose(false, true);
