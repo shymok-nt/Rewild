@@ -1,9 +1,11 @@
+import { hitsMeshCollider } from "./meshColliders";
 export interface Footprint { x: number; z: number; halfWidth: number; halfDepth: number }
 export const WORLD_HALF_SIZE = 69;
 export const PLAYER_RADIUS = 0.4;
 
 /** A single authoritative XZ collider set for trees, stones, buildings and props. */
 export function collides(x: number, z: number, obstacles: readonly Footprint[]): boolean {
+  if (hitsMeshCollider(x, z, PLAYER_RADIUS)) return true;
   return obstacles.some(o => {
     const nearestX = Math.max(o.x - o.halfWidth, Math.min(x, o.x + o.halfWidth));
     const nearestZ = Math.max(o.z - o.halfDepth, Math.min(z, o.z + o.halfDepth));
