@@ -6,7 +6,7 @@ import { resolveMovement } from "../world/collision";
 import type { Footprint } from "../world/collision";
 import { createExplorer } from "./createExplorer";
 
-export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: readonly Footprint[]): void {
+export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: readonly Footprint[]): TransformNode {
   const root = new TransformNode("player-root", scene);
   root.position.set(0, 0, 9);
   const explorer = createExplorer(scene, root);
@@ -74,4 +74,5 @@ export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: r
     window.removeEventListener("keyup", onUp);
     window.removeEventListener("blur", onBlur);
   });
+  return root;
 }
