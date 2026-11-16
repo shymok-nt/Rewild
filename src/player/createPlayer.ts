@@ -5,6 +5,7 @@ import type { Scene } from "@babylonjs/core/scene";
 import { resolveMovement } from "../world/collision";
 import type { Footprint } from "../world/collision";
 import { createExplorer } from "./createExplorer";
+import { loadSurvivor } from "./loadSurvivor";
 
 export interface PlayerController {
   root: TransformNode;
@@ -14,7 +15,15 @@ export interface PlayerController {
 export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: readonly Footprint[]): PlayerController {
   const root = new TransformNode("player-root", scene);
   root.position.set(0, 0, 9);
-  const explorer = createExplorer(scene, root);
+  const fallback = createExplorer(scene, root);
+  let model: Awaited<ReturnType<typeof loadSurvivor>> | null = null;
+  void loadSurvivor(scene, root).then(loaded => {
+    if (scene.isDisposed) { loaded.dispose(); return; }
+    model = loaded;
+    fallback.setVisible(false);
+  }).catch(error => {
+    console.warn("Survivor GLB unavailable; using built-in explorer.", error);
+  });
   camera.lockedTarget = root;
   camera.radius = 12;
   camera.lowerRadiusLimit = 5;
@@ -71,7 +80,7 @@ export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: r
         grounded = true;
       }
     }
-    explorer.update(dt, moving, sprinting, !grounded, performance.now() < harvestUntil);
+    (model ?? fallback).update(dt, moving, sprinting, !grounded, performance.now() < harvestUntil);
     root.position.x = Math.max(-68, Math.min(68, root.position.x));
     root.position.z = Math.max(-68, Math.min(68, root.position.z));
   });
@@ -79,6 +88,7 @@ export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: r
     window.removeEventListener("keydown", onDown);
     window.removeEventListener("keyup", onUp);
     window.removeEventListener("blur", onBlur);
+    model?.dispose();
   });
   return { root, harvest: () => { harvestUntil = performance.now() + 550; } };
 }
