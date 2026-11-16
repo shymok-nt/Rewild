@@ -10,6 +10,8 @@ import { buildEnvironment } from "./buildEnvironment";
 import { createGatheringSystem } from "../game/createGatheringSystem";
 import { installOakForest } from "./installOakForest";
 import type { ForestTree } from "./installOakForest";
+import { installRockModels } from "./installRockModels";
+import { equipAxe } from "../player/equipAxe";
 
 export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
   const scene = new Scene(engine);
@@ -33,6 +35,8 @@ export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
   const obstacles = buildEnvironment(scene, forestTrees);
   const player = createPlayer(scene, camera, obstacles);
   const harvestNodes = createGatheringSystem(scene, player, obstacles);
+  void equipAxe(scene, player.root).catch(error => console.warn("Axe asset unavailable:", error));
+  void installRockModels(scene, harvestNodes).catch(error => console.warn("Rock asset unavailable; keeping old rocks:", error));
   void installOakForest(scene, forestTrees, harvestNodes).catch(error => {
     console.warn("Oak model unavailable; keeping procedural forest.", error);
   });
