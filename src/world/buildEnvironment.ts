@@ -8,6 +8,7 @@ import type { Scene } from "@babylonjs/core/scene";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { VertexData } from "@babylonjs/core/Meshes/mesh.vertexData";
 import type { Footprint } from "./collision";
+import type { ForestTree } from "./installOakForest";
 
 type Random = () => number;
 function seeded(seed: number): Random {
@@ -30,7 +31,7 @@ function box(scene: Scene, name: string, width: number, height: number, depth: n
   return mesh;
 }
 
-export function buildEnvironment(scene: Scene): Footprint[] {
+export function buildEnvironment(scene: Scene, forestTrees: ForestTree[] = []): Footprint[] {
   const obstacles: Footprint[] = [];
   const random = seeded(40217);
   const meadow = material(scene, "meadow-green", "#526D4B");
@@ -138,6 +139,7 @@ export function buildEnvironment(scene: Scene): Footprint[] {
     if (z > 9 && z < 58 && Math.abs(x - Math.sin(z * 0.12) * 3) < 6) continue;
     const scale = 0.75 + random() * 0.7;
     const rotation = random() * Math.PI * 2;
+    forestTrees.push({ x, z, scale, rotation });
     obstacles.push({ x, z, halfWidth: 0.27 * scale, halfDepth: 0.27 * scale });
     transforms[0].push(...matrix(x, 4.1 * scale, z, scale, rotation));
     for (let tier = 0; tier < crowns.length; tier++) {
