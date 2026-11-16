@@ -12,10 +12,12 @@ export async function equipAxe(scene: Scene, player: TransformNode): Promise<voi
   const meshes = result.meshes.filter((m): m is Mesh => m instanceof Mesh && m.getTotalVertices() > 0);
   if (!meshes.length) throw new Error("Axe GLB has no visible geometry");
   const anchor = new TransformNode("equipped-axe", scene);
-  anchor.parent = player;
-  // The character is roughly 2.5 units tall. Place the handle in the right hand.
-  anchor.position.set(0.46, 1.18, 0.05);
-  anchor.rotation.set(-Math.PI / 2, 0, 0.16);
+  const rightArm = scene.getTransformNodeByName("right-arm-pivot");
+  // Follow the animated arm, not the character torso.
+  const animatedHand = rightArm && rightArm.isEnabled() ? rightArm : null;
+  anchor.parent = animatedHand ?? player;
+  anchor.position.set(animatedHand ? 0 : 0.48, animatedHand ? -0.65 : 1.08, 0.05);
+  anchor.rotation.set(0, 0, 0);
   const content = new TransformNode("axe-model-offset", scene);
   content.parent = anchor;
   for (const mesh of result.meshes) {
@@ -35,16 +37,19 @@ export async function equipAxe(scene: Scene, player: TransformNode): Promise<voi
   }
   const dimensions = max.subtract(min);
   const longest = Math.max(dimensions.x, dimensions.y, dimensions.z, 0.001);
-  const scale = 0.78 / longest;
+  const scale = 0.83 / longest;
   content.scaling.setAll(scale);
   const center = min.add(max).scale(0.5);
-  content.position = center.scale(-scale);
+  // Original asset uses Z-up; point the handle vertically.
+  content.rotation.x = -Math.PI / 2;
+  const grip = new Vector3(center.x, center.y, min.z + dimensions.z * 0.18);
+  content.position.set(-grip.x * scale, grip.z * scale, -grip.y * scale);
   // Small procedural grip movement; keep the axe attached to the player's hand
   // instead of a fixed, oversized object beside the torso.
   let elapsed = 0;
   const observer = scene.onBeforeRenderObservable.add(() => {
     elapsed += Math.min(scene.getEngine().getDeltaTime() / 1000, 0.05);
-    anchor.rotation.z = 0.16 + Math.sin(elapsed * 2.4) * 0.035;
+    anchor.rotation.z = Math.sin(elapsed * 2.4) * 0.012;
   });
   scene.onDisposeObservable.add(() => {
     scene.onBeforeRenderObservable.remove(observer);
