@@ -12,12 +12,12 @@ import type { HarvestNode } from "./harvesting";
 export function createGatheringSystem(scene: Scene, player: PlayerController, obstacles: Footprint[]): HarvestNode[] {
   const inventory = new Inventory();
   const nodes = createHarvestNodes(scene);
-  const trunkColliders = new Map<string, Footprint>();
+  const resourceColliders = new Map<string, Footprint>();
   for (const node of nodes) {
-    if (node.kind !== "wood") continue;
-    const footprint: Footprint = { x: node.position.x, z: node.position.z, halfWidth: 0.62, halfDepth: 0.62 };
+    const radius = node.kind === "wood" ? 0.9 : 0.65;
+    const footprint: Footprint = { x: node.position.x, z: node.position.z, halfWidth: radius, halfDepth: radius };
     obstacles.push(footprint);
-    trunkColliders.set(node.id, footprint);
+    resourceColliders.set(node.id, footprint);
   }
   const panel = document.createElement("section");
   panel.id = "rewild-inventory";
@@ -94,7 +94,7 @@ export function createGatheringSystem(scene: Scene, player: PlayerController, ob
     noticeUntil = performance.now() + 1250;
     if (target.remaining <= 0) {
       target.visual.setEnabled(false);
-      const collider = trunkColliders.get(target.id);
+      const collider = resourceColliders.get(target.id);
       if (collider) {
         const index = obstacles.indexOf(collider);
         if (index >= 0) obstacles.splice(index, 1);
@@ -126,7 +126,7 @@ export function createGatheringSystem(scene: Scene, player: PlayerController, ob
       if (node.remaining === 0 && now >= node.cooldownUntil) {
         node.remaining = node.maximum;
         node.visual.setEnabled(true);
-        const collider = trunkColliders.get(node.id);
+        const collider = resourceColliders.get(node.id);
         if (collider && !obstacles.includes(collider)) obstacles.push(collider);
       }
     }
