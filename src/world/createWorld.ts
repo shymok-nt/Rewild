@@ -7,6 +7,7 @@ import { Scene } from "@babylonjs/core/scene";
 import type { Engine } from "@babylonjs/core/Engines/engine";
 import { createPlayer } from "../player/createPlayer";
 import { buildEnvironment } from "./buildEnvironment";
+import { createGatheringSystem } from "../game/createGatheringSystem";
 
 export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
   const scene = new Scene(engine);
@@ -27,6 +28,7 @@ export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
   sun.diffuse = new Color3(1, 0.91, 0.76);
 
   const obstacles = buildEnvironment(scene);
-  createPlayer(scene, camera, obstacles);
+  const player = createPlayer(scene, camera, obstacles);
+  createGatheringSystem(scene, player);
   return scene;
 }
