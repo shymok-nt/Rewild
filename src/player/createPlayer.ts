@@ -1,28 +1,15 @@
 import { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
-import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
-import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
-import { Color3 } from "@babylonjs/core/Maths/math.color";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import type { Scene } from "@babylonjs/core/scene";
 import { resolveMovement } from "../world/collision";
 import type { Footprint } from "../world/collision";
+import { createExplorer } from "./createExplorer";
 
 export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: readonly Footprint[]): void {
   const root = new TransformNode("player-root", scene);
   root.position.set(0, 0, 9);
-  const outfit = new StandardMaterial("outfit", scene);
-  outfit.diffuseColor = new Color3(0.19, 0.36, 0.42);
-  const skin = new StandardMaterial("skin", scene);
-  skin.diffuseColor = new Color3(0.77, 0.56, 0.39);
-  const body = MeshBuilder.CreateCapsule("player-body", { height: 1.65, radius: 0.37, tessellation: 10 }, scene);
-  body.parent = root;
-  body.position.y = 1.05;
-  body.material = outfit;
-  const head = MeshBuilder.CreateSphere("player-head", { diameter: 0.55, segments: 10 }, scene);
-  head.parent = root;
-  head.position.y = 2.08;
-  head.material = skin;
+  const explorer = createExplorer(scene, root);
   camera.lockedTarget = root;
   camera.radius = 12;
   camera.lowerRadiusLimit = 5;
@@ -50,12 +37,14 @@ export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: r
     const forwardInput = Number(keys.has("KeyW") || keys.has("ArrowUp")) - Number(keys.has("KeyS") || keys.has("ArrowDown"));
     const rightInput = Number(keys.has("KeyD") || keys.has("ArrowRight")) - Number(keys.has("KeyA") || keys.has("ArrowLeft"));
     const input = new Vector3(rightInput, 0, forwardInput);
-    if (input.lengthSquared() > 0) {
+    const moving = input.lengthSquared() > 0;
+    const sprinting = keys.has("ShiftLeft") || keys.has("ShiftRight");
+    if (moving) {
       input.normalize();
       const forward = new Vector3(-Math.cos(camera.alpha), 0, -Math.sin(camera.alpha));
       const right = new Vector3(forward.z, 0, -forward.x);
       const direction = forward.scale(input.z).add(right.scale(input.x)).normalize();
-      const speed = keys.has("ShiftLeft") || keys.has("ShiftRight") ? 8 : 4.5;
+      const speed = sprinting ? 8 : 4.5;
       const step = direction.scale(speed * dt);
       const next = resolveMovement(root.position.x, root.position.z, step.x, step.z, obstacles);
       root.position.x = next.x;
@@ -76,6 +65,7 @@ export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: r
         grounded = true;
       }
     }
+    explorer.update(dt, moving, sprinting, !grounded);
     root.position.x = Math.max(-68, Math.min(68, root.position.x));
     root.position.z = Math.max(-68, Math.min(68, root.position.z));
   });
