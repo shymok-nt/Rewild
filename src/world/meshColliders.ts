@@ -10,7 +10,6 @@ type Segment = { ax: number; az: number; bx: number; bz: number };
 const CELL = 3;
 const HEIGHTS = [0.3, 0.9, 1.5];
 const buckets = new Map<string, Segment[]>();
-const key = (x: number, z: number) => Math.floor(x / CELL) + ":" + Math.floor(z / CELL);
 let enabled = false;
 
 export function resetMeshColliders(): void {
