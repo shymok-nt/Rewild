@@ -4,6 +4,7 @@ import type { Scene } from "@babylonjs/core/scene";
 import { Matrix, Quaternion, Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import type { HarvestNode } from "../game/harvesting";
+import { registerGlbCollider } from "./meshColliders";
 
 export interface ForestTree { x: number; z: number; scale: number; rotation: number }
 
@@ -18,12 +19,15 @@ export async function installOakForest(scene: Scene, trees: readonly ForestTree[
   const meshes = result.meshes.filter((mesh): mesh is Mesh => mesh instanceof Mesh && mesh.getTotalVertices() > 0);
   if (meshes.length === 0) throw new Error("Oak GLB has no renderable meshes");
   const matrices = new Float32Array(trees.length * 16);
+  const placements: Matrix[] = [];
   trees.forEach((tree, i) => {
-    Matrix.Compose(
+    const placement = Matrix.Compose(
       new Vector3(tree.scale, tree.scale, tree.scale),
       Quaternion.RotationAxis(Vector3.Up(), tree.rotation),
       new Vector3(tree.x, 0, tree.z),
-    ).copyToArray(matrices, i * 16);
+    );
+    placements.push(placement);
+    placement.copyToArray(matrices, i * 16);
   });
   for (const mesh of meshes) {
     // The uploaded asset has identity mesh transforms; keep its materials and vertex colors.
@@ -47,6 +51,7 @@ export async function installOakForest(scene: Scene, trees: readonly ForestTree[
       instance.isPickable = false;
     }
   }
+  registerGlbCollider(scene, meshes, placements);
   for (const name of [
     "pine-trunk-source", "pine-crown-source-0", "pine-crown-source-1",
     "pine-crown-source-2", "pine-crown-source-3", "pine-crown-source-4",
