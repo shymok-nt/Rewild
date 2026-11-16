@@ -14,6 +14,8 @@ export interface HarvestNode {
   maximum: number;
   cooldownUntil: number;
   visual: ReturnType<typeof MeshBuilder.CreateBox>;
+  baseScale: Vector3;
+  hitUntil: number;
 }
 function makeMaterial(scene: Scene, name: string, hex: string): StandardMaterial {
   const m = new StandardMaterial(name, scene);
@@ -36,20 +38,24 @@ export function createHarvestNodes(scene: Scene): HarvestNode[] {
   for (const [i, item] of positions.entries()) {
     let visual: ReturnType<typeof MeshBuilder.CreateBox>;
     if (item.kind === "wood") {
-      visual = MeshBuilder.CreateBox("harvest-log-" + i, { width: 1.4, height: 0.7, depth: 0.65 }, scene);
+      visual = MeshBuilder.CreateBox("harvest-tree-" + i, { width: 0.72, height: 3.4, depth: 0.72 }, scene);
       visual.material = bark;
-      visual.rotation.z = 0.14;
-      const leaves = MeshBuilder.CreateSphere("harvest-leaves-" + i, { diameter: 0.8, segments: 6 }, scene);
-      leaves.parent = visual;
-      leaves.position.set(0.25, 0.55, 0);
-      leaves.material = foliage;
+      visual.position.y = 1.7;
+      for (let tier = 0; tier < 3; tier++) {
+        const crown = MeshBuilder.CreateCylinder("harvest-tree-crown-" + i + "-" + tier, {
+          height: 2.3, diameterTop: 0, diameterBottom: 3.1 - tier * 0.4, tessellation: 7,
+        }, scene);
+        crown.parent = visual;
+        crown.position.y = 0.25 + tier * 0.62;
+        crown.material = foliage;
+      }
     } else {
       visual = MeshBuilder.CreateBox("harvest-rock-" + i, { size: 1.1 }, scene);
       visual.scaling.set(1.3, 0.65, 0.9);
       visual.rotation.y = i * 0.37;
       visual.material = rockMat;
     }
-    visual.position.set(item.x, item.kind === "wood" ? 0.38 : 0.36, item.z);
+    visual.position.set(item.x, item.kind === "wood" ? 1.7 : 0.36, item.z);
     visual.isPickable = false;
     nodes.push({
       id: "resource-" + i,
@@ -60,6 +66,8 @@ export function createHarvestNodes(scene: Scene): HarvestNode[] {
       maximum: 5,
       cooldownUntil: 0,
       visual,
+      baseScale: visual.scaling.clone(),
+      hitUntil: 0,
     });
   }
   return nodes;
