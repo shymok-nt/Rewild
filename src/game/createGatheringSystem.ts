@@ -62,12 +62,12 @@ export function createGatheringSystem(scene: Scene, player: PlayerController, ob
   stoneParticle.diffuseColor = Color3.FromHexString("#B4B9B0");
   function burst(x: number, z: number, kind: "wood" | "stone"): void {
     const now = performance.now();
-    for (let i = 0; i < 6; i++) {
-      const chip = MeshBuilder.CreateBox("harvest-chip", { size: 0.11 }, scene);
+    for (let i = 0; i < (kind === "wood" ? 12 : 8); i++) {
+      const chip = MeshBuilder.CreateBox("harvest-chip", { size: kind === "wood" ? 0.15 : 0.11 }, scene);
       chip.material = kind === "wood" ? woodParticle : stoneParticle;
       chip.position.set(x, kind === "wood" ? 1.4 : 0.6, z);
-      const angle = (i / 6) * Math.PI * 2;
-      fragments.push({ mesh: chip, velocity: new Vector3(Math.cos(angle) * 2, 2.4 + i * 0.14, Math.sin(angle) * 2), until: now + 600 });
+      const angle = (i / (kind === "wood" ? 12 : 8)) * Math.PI * 2;
+      fragments.push({ mesh: chip, velocity: new Vector3(Math.cos(angle) * 2.8, 2.1 + (i % 5) * 0.35, Math.sin(angle) * 2.8), until: now + 600 });
     }
   }
   const onKeyDown = (event: KeyboardEvent) => {
