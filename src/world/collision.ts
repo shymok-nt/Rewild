@@ -17,7 +17,13 @@ export function resolveMovement(
     });
     return blocked ? (axis === "x" ? x : z) : Math.max(-WORLD_HALF_SIZE, Math.min(WORLD_HALF_SIZE, proposed));
   };
-  const x = moveAxis(fromX, fromZ, "x", dx);
-  const z = moveAxis(x, fromZ, "z", dz);
+  // Sweep in short steps so sprinting cannot jump through a thin trunk.
+  const steps = Math.max(1, Math.ceil(Math.hypot(dx, dz) / 0.12));
+  let x = fromX;
+  let z = fromZ;
+  for (let i = 0; i < steps; i++) {
+    x = moveAxis(x, z, "x", dx / steps);
+    z = moveAxis(x, z, "z", dz / steps);
+  }
   return { x, z };
 }
