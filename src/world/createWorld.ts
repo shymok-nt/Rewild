@@ -16,6 +16,7 @@ import { installRockModels } from "./installRockModels";
 import { equipAxe } from "../player/equipAxe";
 import { installFernForest } from "./installFernForest";
 import { installSearsiaShrubs } from "./installSearsiaShrubs";
+import { installForestFloorDetails } from "./installForestFloorDetails";
 import { createDebugTools } from "../debug/createDebugTools";
 
 export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
@@ -68,6 +69,7 @@ export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
   const obstacles = buildEnvironment(scene, forestTrees);
   const ground = scene.getMeshByName("walkable-meadow");
   if (ground) ground.receiveShadows = true;
+  installForestFloorDetails(scene, forestTrees);
   // Fern colonies replace the previous sharp procedural grass tufts.
   // Diagnostic switches let us isolate GPU geometry errors without changing game systems.
   const diagnostics = new URLSearchParams(window.location.search);
