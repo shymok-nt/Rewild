@@ -36,6 +36,9 @@ export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
     useDirectMapping: true,
   }, scene);
   sky.mesh.isPickable = false;
+  // Distant sky must not receive scene fog: EXP2 fog washes the panorama
+  // into a flat color at the dome radius.
+  sky.mesh.applyFog = false;
 
   const ambient = new HemisphericLight("skylight", new Vector3(0, 1, 0), scene);
   ambient.intensity = 0.72;
