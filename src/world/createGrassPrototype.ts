@@ -66,6 +66,7 @@ export function createGrassPrototype(scene: Scene): void {
   material.backFaceCulling = false;
   mesh.material = material;
   mesh.isPickable = false;
+  mesh.receiveShadows = false;
   mesh.alwaysSelectAsActiveMesh = true;
 
   // A capped, deterministic moving window. Never allocate geometry per tuft.

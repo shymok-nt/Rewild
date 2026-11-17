@@ -41,6 +41,8 @@ export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: r
   camera.lowerBetaLimit = 0.12;
   camera.upperBetaLimit = Math.PI - 0.12;
   camera.panningSensibility = 0;
+  let targetAlpha = camera.alpha;
+  let targetBeta = camera.beta;
   // Click the canvas once to capture the pointer; Esc releases it.
   camera.inputs.removeByType("ArcRotateCameraPointersInput");
   const canvas = scene.getEngine().getRenderingCanvas();
@@ -51,9 +53,9 @@ export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: r
   };
   const onMouseMove = (event: MouseEvent) => {
     if (!canvas || document.pointerLockElement !== canvas) return;
-    camera.alpha -= event.movementX * 0.003;
-    camera.beta -= event.movementY * 0.003;
-    camera.beta = Math.max(camera.lowerBetaLimit ?? 0.3, Math.min(camera.upperBetaLimit ?? 1.45, camera.beta));
+    targetAlpha -= event.movementX * 0.003;
+    targetBeta -= event.movementY * 0.003;
+    targetBeta = Math.max(camera.lowerBetaLimit ?? 0.3, Math.min(camera.upperBetaLimit ?? 1.45, targetBeta));
   };
   canvas?.addEventListener("click", onCanvasClick);
   document.addEventListener("mousemove", onMouseMove);
@@ -73,6 +75,8 @@ export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: r
   let harvestUntil = 0;
   let verticalVelocity = 0;
   let grounded = true;
+  let bobTime = 0;
+  let bobAmount = 0;
   scene.onBeforeRenderObservable.add(() => {
     const dt = Math.min(scene.getEngine().getDeltaTime() / 1000, 0.05);
     const forwardInput = Number(keys.has("KeyW") || keys.has("ArrowUp")) - Number(keys.has("KeyS") || keys.has("ArrowDown"));
@@ -80,6 +84,9 @@ export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: r
     const input = new Vector3(rightInput, 0, forwardInput);
     const moving = input.lengthSquared() > 0;
     const sprinting = keys.has("ShiftLeft") || keys.has("ShiftRight");
+    const lookSmoothing = 1 - Math.exp(-dt * 18);
+    camera.alpha += (targetAlpha - camera.alpha) * lookSmoothing;
+    camera.beta += (targetBeta - camera.beta) * lookSmoothing;
     if (moving) {
       input.normalize();
       const forward = new Vector3(-Math.cos(camera.alpha), 0, -Math.sin(camera.alpha));
@@ -108,6 +115,11 @@ export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: r
         grounded = true;
       }
     }
+    const bobTarget = moving && grounded ? 1 : 0;
+    bobAmount += (bobTarget - bobAmount) * Math.min(1, dt * 10);
+    if (bobAmount > 0.001) bobTime += dt * (sprinting ? 13 : 9);
+    cameraFocus.position.x = Math.cos(bobTime) * 0.009 * bobAmount;
+    cameraFocus.position.y = 1.68 + Math.abs(Math.sin(bobTime * 2)) * 0.018 * bobAmount;
     (model ?? fallback).update(dt, moving, sprinting, !grounded, performance.now() < harvestUntil);
     root.position.x = Math.max(-68, Math.min(68, root.position.x));
     root.position.z = Math.max(-68, Math.min(68, root.position.z));

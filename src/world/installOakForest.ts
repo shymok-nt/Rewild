@@ -31,6 +31,17 @@ export async function installOakForest(scene: Scene, trees: readonly ForestTree[
   });
 
   const created: TransformNode[] = [];
+  const settleOnGround = (anchor: TransformNode) => {
+    anchor.computeWorldMatrix(true);
+    let minY = Infinity;
+    for (const child of anchor.getChildMeshes(false)) {
+      child.computeWorldMatrix(true);
+      minY = Math.min(minY, child.getBoundingInfo().boundingBox.minimumWorld.y);
+    }
+    if (!Number.isFinite(minY)) return;
+    const parentScaleY = anchor.parent?.getWorldMatrix().getRow(1)?.length() ?? 1;
+    anchor.position.y += (0.015 - minY) / Math.max(0.0001, parentScaleY);
+  };
   const instantiate = (name: string, x: number, z: number, size: number, angle: number, y = 0) => {
     const anchor = new TransformNode(name, scene);
     anchor.position.set(x, y, z);
@@ -57,6 +68,7 @@ export async function installOakForest(scene: Scene, trees: readonly ForestTree[
         anchor.parent = resource.visual;
         anchor.position.set(0, 0, 0);
       }
+      settleOnGround(anchor);
     }
     for (const node of harvestNodes) {
       if (node.kind !== "wood") continue;
@@ -64,6 +76,7 @@ export async function installOakForest(scene: Scene, trees: readonly ForestTree[
       // Harvesting controls the original visual's enabled state.
       anchor.parent = node.visual;
       anchor.position.set(0, -node.visual.position.y, 0);
+      settleOnGround(anchor);
     }
 
     // The original source meshes must not appear at the world origin.

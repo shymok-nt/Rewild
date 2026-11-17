@@ -73,10 +73,26 @@ export async function equipAxe(
   sleeve.rotation.z = -0.35;
   sleeve.material = sleeveMat;
   sleeve.isPickable = false;
-  // A subtle harvesting motion without relying on hidden character bones.
+  const handBasePosition = handSocket.position.clone();
+  let swingElapsed = 1;
+  let wasHarvesting = false;
+  // Smooth camera-space harvesting motion without relying on hidden character bones.
   const observer = scene.onBeforeRenderObservable.add(() => {
-    const t = _isHarvesting() ? performance.now() * 0.016 : 0;
-    handSocket.rotation.x = _isHarvesting() ? -0.22 + Math.sin(t) * 0.15 : 0;
+    const dt = Math.min(scene.getEngine().getDeltaTime() / 1000, 0.05);
+    const harvesting = _isHarvesting();
+    if (harvesting && !wasHarvesting) swingElapsed = 0;
+    wasHarvesting = harvesting;
+    swingElapsed = Math.min(1, swingElapsed + dt / 0.55);
+    const progress = harvesting ? Math.sin(swingElapsed * Math.PI) : 0;
+    const targetX = -0.22 * progress;
+    const targetZ = -0.08 * progress;
+    const smoothing = 1 - Math.exp(-dt * 24);
+    handSocket.rotation.x += (targetX - handSocket.rotation.x) * smoothing;
+    handSocket.rotation.z += (targetZ - handSocket.rotation.z) * smoothing;
+    const targetY = handBasePosition.y - 0.035 * progress;
+    const targetDepth = handBasePosition.z + 0.045 * progress;
+    handSocket.position.y += (targetY - handSocket.position.y) * smoothing;
+    handSocket.position.z += (targetDepth - handSocket.position.z) * smoothing;
   });
 
   scene.onDisposeObservable.add(() => {

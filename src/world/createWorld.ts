@@ -15,9 +15,11 @@ import type { ForestTree } from "./installOakForest";
 import { installRockModels } from "./installRockModels";
 import { equipAxe } from "../player/equipAxe";
 import { createGrassPrototype } from "./createGrassPrototype";
+import { createDebugTools } from "../debug/createDebugTools";
 
 export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
   const scene = new Scene(engine);
+  createDebugTools(scene, engine);
   scene.clearColor = new Color4(0.76, 0.83, 0.88, 1);
   scene.fogMode = Scene.FOGMODE_EXP2;
   scene.fogDensity = 0.004;
