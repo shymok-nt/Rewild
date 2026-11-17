@@ -28,7 +28,7 @@ npm run build
 npm run preview
 ```
 
-The project includes a GitHub Actions build workflow. A successful workflow run should be verified before distributing the game.
+The project includes a GitHub Actions build workflow. A successful workflow run should be verified before distributing the game. The game has not yet been visually validated on the target AMD integrated GPU.
 
 ## Controls
 
@@ -40,6 +40,8 @@ The project includes a GitHub Actions build workflow. A successful workflow run 
 | Down / S | Slide |
 | P / Escape | Pause or resume |
 | R | Restart after a collision |
+| Start / replay button | Begin or restart on touch screens |
+| Sound button | Toggle synthesized sound effects |
 | Swipe | Move, jump or slide on touch devices |
 
 ## Architecture
@@ -48,6 +50,9 @@ The project includes a GitHub Actions build workflow. A successful workflow run 
 - `src/city.ts`: recycled facade blocks, shop trim, windows and street trees
 - `src/street.ts`: recycled street furniture, lamps and planters
 - `src/hazards.ts`: pooled coins and obstacles, spawn patterns and collision rules
+- `src/road.ts`: repeating curb stones, lane markings and pedestrian crossings
+- `src/ground.ts`: seeded asphalt and sidewalk texture generation
+- `src/audio.ts`: original synthesized audio with mute preference
 - `public/assets/character.glb`: temporary animated example asset from the Three.js example library
 
 ## Visual and technical roadmap
