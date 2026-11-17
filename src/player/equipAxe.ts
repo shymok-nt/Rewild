@@ -1,6 +1,9 @@
 import "@babylonjs/loaders/glTF";
 import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
+import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
+import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
+import { Color3 } from "@babylonjs/core/Maths/math.color";
 import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 import type { Scene } from "@babylonjs/core/scene";
 
@@ -26,7 +29,7 @@ export async function equipAxe(
   // First-person viewmodel: camera-relative, independent of invisible body rig.
   const handSocket = new TransformNode("first-person-equipment-socket", scene);
   handSocket.parent = scene.activeCamera ?? player;
-  handSocket.position.set(0.34, -0.32, 0.78);
+  handSocket.position.set(0.30, -0.39, 0.40);
   const adjust = new TransformNode("axe-grip-adjustment", scene);
   adjust.parent = handSocket;
   const model = new TransformNode("axe-asset-orientation", scene);
@@ -52,6 +55,24 @@ export async function equipAxe(
   // Preserve the calibrated model rotation/scale, but use a camera-space
   // position so the tool stays visible and never clips through the torso.
   adjust.position.set(0, 0, 0);
+  // Simple lightweight first-person arm, fixed to the same grip as the tool.
+  const gloveMat = new StandardMaterial("first-person-glove", scene);
+  gloveMat.diffuseColor = Color3.FromHexString("#80664C");
+  const sleeveMat = new StandardMaterial("first-person-sleeve", scene);
+  sleeveMat.diffuseColor = Color3.FromHexString("#344B37");
+  const glove = MeshBuilder.CreateSphere("first-person-hand", { diameter: 0.13, segments: 10 }, scene);
+  glove.parent = handSocket;
+  glove.position.set(0, -0.015, 0);
+  glove.material = gloveMat;
+  glove.isPickable = false;
+  const sleeve = MeshBuilder.CreateCylinder("first-person-forearm", {
+    height: 0.36, diameterTop: 0.11, diameterBottom: 0.15, tessellation: 10,
+  }, scene);
+  sleeve.parent = handSocket;
+  sleeve.position.set(0.07, -0.22, -0.04);
+  sleeve.rotation.z = -0.35;
+  sleeve.material = sleeveMat;
+  sleeve.isPickable = false;
   // A subtle harvesting motion without relying on hidden character bones.
   const observer = scene.onBeforeRenderObservable.add(() => {
     const t = _isHarvesting() ? performance.now() * 0.016 : 0;
@@ -61,5 +82,7 @@ export async function equipAxe(
   scene.onDisposeObservable.add(() => {
     scene.onBeforeRenderObservable.remove(observer);
     handSocket.dispose(false, true);
+    gloveMat.dispose();
+    sleeveMat.dispose();
   });
 }
