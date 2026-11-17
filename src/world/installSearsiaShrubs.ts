@@ -45,7 +45,7 @@ export async function installSearsiaShrubs(scene: Scene, trees: readonly ForestT
       mesh.getWorldMatrix().decompose(scale, rotation, position);
       return { mesh, scale, rotation, position };
     });
-    const colonies: { anchor: TransformNode; x: number; z: number }[] = [];
+    const colonies: { anchor: TransformNode; x: number; z: number; baseScale: number; fade: number }[] = [];
     let count = 0;
     const MAX_SHRUBS = 24;
     const plant = (x: number, z: number, scale: number, angle: number) => {
@@ -63,7 +63,7 @@ export async function installSearsiaShrubs(scene: Scene, trees: readonly ForestT
         instance.isPickable = false;
         instance.receiveShadows = false;
       }
-      colonies.push({ anchor, x, z });
+      colonies.push({ anchor, x, z, baseScale: scale, fade: 1 });
       count++;
     };
     for (let i = 0; i < trees.length && count < MAX_SHRUBS; i++) {
@@ -85,23 +85,37 @@ export async function installSearsiaShrubs(scene: Scene, trees: readonly ForestT
       }
     }
     for (const part of parts) part.mesh.isVisible = false;
-    // Preserve the actual Searsia silhouette at all visible distances.
-    // Hide distant colonies instead of replacing them with unrelated geometry.
-    const HIDE_SQ = 43 * 43;
-    const SHOW_SQ = 39 * 39;
-    let elapsed = 1000;
+    // Soft distance transition: keep the original shrub geometry and materials.
+    // No sphere impostors or transparent leaf layers (which increase overdraw).
+    // Ease the whole colony out over a wide distance band, then disable it.
+    const FADE_START = 32;
+    const FADE_END = 49;
+    const MIN_SCALE = 0.001;
+    const smoothstep = (value: number) => {
+      const t = Math.max(0, Math.min(1, value));
+      return t * t * (3 - 2 * t);
+    };
+    let elapsed = 0;
     const observer = scene.onBeforeRenderObservable.add(() => {
-      elapsed += Math.min(scene.getEngine().getDeltaTime(), 100);
-      if (elapsed < 400) return;
-      elapsed = 0;
       const camera = scene.activeCamera;
       if (!camera) return;
+      const delta = Math.min(scene.getEngine().getDeltaTime(), 100) / 1000;
+      elapsed += delta;
+      // At most 20 updates/sec. Interpolation avoids noticeable popping
+      // when sprinting or turning the camera near the fade boundary.
+      if (elapsed < 0.05) return;
+      const step = Math.min(elapsed, 0.15);
+      elapsed = 0;
       const px = camera.globalPosition.x, pz = camera.globalPosition.z;
       for (const colony of colonies) {
-        const dx = colony.x - px, dz = colony.z - pz;
-        const distanceSq = dx * dx + dz * dz;
-        if (colony.anchor.isEnabled() && distanceSq > HIDE_SQ) colony.anchor.setEnabled(false);
-        else if (!colony.anchor.isEnabled() && distanceSq < SHOW_SQ) colony.anchor.setEnabled(true);
+        const distance = Math.hypot(colony.x - px, colony.z - pz);
+        const target = 1 - smoothstep((distance - FADE_START) / (FADE_END - FADE_START));
+        const blend = 1 - Math.exp(-step * 9);
+        colony.fade += (target - colony.fade) * blend;
+        if (Math.abs(colony.fade - target) < 0.002) colony.fade = target;
+        const visible = colony.fade > 0.005;
+        if (colony.anchor.isEnabled() !== visible) colony.anchor.setEnabled(visible);
+        if (visible) colony.anchor.scaling.setAll(colony.baseScale * Math.max(MIN_SCALE, colony.fade));
       }
     });
     scene.onDisposeObservable.addOnce(() => scene.onBeforeRenderObservable.remove(observer));
