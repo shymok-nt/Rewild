@@ -306,3 +306,12 @@ Her önemli geliştirme sonrasında bu bölümün altına tarih, değişen dosya
 - Main integration commits `426f4593`, `8b296a6b`, `5536fecd`.
 - The new GLBs are **simple low-poly assets, not premium downloaded models**. They should be replaced with professional licensed assets when source, redistribution rights and accessible binary downloads can be verified.
 - Validation: CI and browser playtesting must be checked for the latest integration commit. Visual facing, joints, road seams, shadows and target AMD FPS remain unverified.
+
+
+#### 2026-11-18 — Imported external GLB assets
+- Imported textured, rigged CesiumMan GLB from Khronos glTF-Sample-Assets (Cesium, **CC BY 4.0**; attribution required) as `public/assets/real-runner.glb`. The model has a bundled animation clip, which is played through `THREE.AnimationMixer`; jump/slide currently modify transform rather than dedicated clips. Character is a demo man, **not a bespoke realistic runner**.
+- Imported `hotel`, `loja_esquina`, `restaurante`, `escritorio` GLBs from `kayquer/kit-cidade-lowpoly` (**CC0**). These replace generated cube buildings in `src/assetWorld.ts`. Assets are intentionally low-poly, not photorealistic.
+- Extended recycled city from 12 to 18 block pairs and road from 12 to 16 segments to keep recycling beyond the fog horizon. The original road-segment GLB remains a box-based model.
+- Assets were fetched as actual binary GLB files via GitHub and committed into the repository; no runtime third-party download dependency.
+- Validation: CI compile pending; check model orientation, road-to-sidewalk scale, character facing direction, source animation appearance and visual seams in browser. AMD FPS not yet measured.
+- Sources: https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/CesiumMan and https://github.com/kayquer/kit-cidade-lowpoly
