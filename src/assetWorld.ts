@@ -4,8 +4,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 /** Loads pre-authored GLB geometry; Three.js is used only to render/recycle models. */
 export async function loadWorldAssets(scene: THREE.Scene): Promise<(distance: number) => void> {
   const loader = new GLTFLoader();
-  const [building, road] = await Promise.all([
-    loader.loadAsync("/assets/building.glb"),
+  const [buildings, road] = await Promise.all([
+    Promise.all(["hotel", "loja_esquina", "restaurante", "escritorio"].map(name => loader.loadAsync(`/assets/city-${name}.glb`))),
     loader.loadAsync("/assets/road-segment.glb")
   ]);
   const blocks: THREE.Object3D[] = [];
@@ -14,10 +14,11 @@ export async function loadWorldAssets(scene: THREE.Scene): Promise<(distance: nu
   const roads: THREE.Object3D[] = [];
   for (let i = 0; i < 36; i++) {
     const side = i % 2 === 0 ? -1 : 1;
-    const model = building.scene.clone(true);
+    const model = buildings[Math.floor(i / 2) % buildings.length].scene.clone(true);
     model.position.set(side * 12.3, 0, 8 - Math.floor(i / 2) * 14);
+    // Imported CC0 kit uses 2m grid lots; enlarge to match runner road width.
     model.rotation.y = side === -1 ? Math.PI / 2 : -Math.PI / 2;
-    model.scale.setScalar(0.95 + (i % 4) * 0.035);
+    model.scale.setScalar(2.8 + (i % 4) * 0.12);
     model.traverse(o => { if (o instanceof THREE.Mesh) { o.castShadow = false; o.receiveShadow = true; } });
     scene.add(model);
     blocks.push(model);
