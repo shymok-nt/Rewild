@@ -48,7 +48,7 @@ export function installForestFloorDetails(scene: Scene, trees: readonly ForestTr
       x + dx * size - nx, y, z + dz * size - nz,
       x + dx * size + nx, y, z + dz * size + nz);
     twigIndices.push(base, base + 1, base + 2, base, base + 2, base + 3);
-    for (let i = 0; i < 4; i++) twigColors.push(0.22, 0.16, 0.11, 1);
+    for (let i = 0; i < 4; i++) twigColors.push(0.55, 0.37, 0.22, 1);
   };
   let leaves = 0, twigs = 0;
   // Naturally clustered around trees, not a repeated uniform carpet.
@@ -81,6 +81,8 @@ export function installForestFloorDetails(scene: Scene, trees: readonly ForestTr
     material.specularColor = Color3.Black();
     material.backFaceCulling = false;
     material.disableLighting = true;
+    material.emissiveColor = Color3.White();
+    material.useVertexColors = true;
     mesh.material = material;
     mesh.isPickable = false;
     mesh.receiveShadows = false;
