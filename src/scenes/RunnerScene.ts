@@ -19,6 +19,8 @@ export class RunnerScene extends Phaser.Scene {
   private totalCoins = 0;
   private best = 0;
   private gameOver = false;
+  private paused = false;
+  private speed = 20;
   private overlay!: Phaser.GameObjects.Text;
   private hud!: Phaser.GameObjects.Text;
   private title!: Phaser.GameObjects.Text;
@@ -60,7 +62,7 @@ export class RunnerScene extends Phaser.Scene {
     try { this.best = Number(localStorage.getItem("rush-city-best") || 0); this.totalCoins = Number(localStorage.getItem("rush-city-coins") || 0); } catch {}
     const kb = this.input.keyboard;
     if (!kb) throw new Error("Keyboard input unavailable");
-    this.keys = kb.addKeys("A,D,LEFT,RIGHT,SPACE,UP,DOWN,S,R") as Record<string, Phaser.Input.Keyboard.Key>;
+    this.keys = kb.addKeys("A,D,LEFT,RIGHT,SPACE,UP,DOWN,S,R,P,ESC") as Record<string, Phaser.Input.Keyboard.Key>;
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
       if (this.gameOver) { this.reset(); return; }
       this.pointerStart = { x: p.x, y: p.y };
@@ -81,7 +83,7 @@ export class RunnerScene extends Phaser.Scene {
   private slide(): void { if (this.slideTime <= 0 && this.jumpTime <= 0) this.slideTime = 0.7; }
   private hit(key: string): boolean { return Phaser.Input.Keyboard.JustDown(this.keys[key]); }
   private reset(): void {
-    this.gameOver = false; this.overlay.setVisible(false); this.distance = 0;
+    this.gameOver = false; this.paused = false; this.overlay.setVisible(false); this.distance = 0;
     this.coins = 0; this.combo = 0; this.nextSpawn = 28; this.obstacles = []; this.lane = 0;
     this.visualLane = 0; this.jumpTime = 0; this.slideTime = 0; this.laneLean = 0; this.pickupGlow = 0;
   }
@@ -95,6 +97,11 @@ export class RunnerScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     const dt = Math.min(delta / 1000, 0.05);
     if (this.gameOver) { if (this.hit("R") || this.hit("SPACE")) this.reset(); return; }
+    if (this.hit("P") || this.hit("ESC")) {
+      this.paused = !this.paused;
+      this.overlay.setText("DURAKLATILDI\n\nP / ESC: DEVAM").setVisible(this.paused);
+    }
+    if (this.paused) return;
     if (this.hit("LEFT") || this.hit("A")) this.move(-1);
     if (this.hit("RIGHT") || this.hit("D")) this.move(1);
     if (this.hit("SPACE") || this.hit("UP")) this.jump();
@@ -106,7 +113,8 @@ export class RunnerScene extends Phaser.Scene {
     this.jumpTime = Math.max(0, this.jumpTime - dt);
     this.slideTime = Math.max(0, this.slideTime - dt);
     const previousDistance = this.distance;
-    this.distance += dt * Math.min(30, 20 + this.distance / 500);
+    this.speed = Math.min(30, 20 + this.distance / 500);
+    this.distance += dt * this.speed;
     this.pickupGlow = Math.max(0, this.pickupGlow - dt);
     if (this.distance > this.nextSpawn) {
       this.obstacles.push({ lane: Phaser.Math.Between(-1, 1), z: this.distance + 65, kind: Phaser.Math.Between(0, 3), collected: false });
@@ -123,7 +131,7 @@ export class RunnerScene extends Phaser.Scene {
     this.obstacles = this.obstacles.filter(o => o.z > this.distance - 6);
     this.runClock += dt * 12;
     this.draw();
-    this.hud.setText(`MESAFE ${Math.floor(this.distance)} m   •   ALTIN ${this.coins}   •   KOMBO ${this.combo}   •   REKOR ${this.best} m   •   ${Math.round(this.game.loop.actualFps)} FPS`);
+    this.hud.setText(`MESAFE ${Math.floor(this.distance)} m   •   ALTIN ${this.coins}   •   KOMBO ${this.combo}   •   HIZ ${Math.round(this.speed)}   •   ${Math.round(this.game.loop.actualFps)} FPS`);
   }
 
   private roadY(t: number): number { return lerp(HORIZON, BOTTOM, t * t); }
