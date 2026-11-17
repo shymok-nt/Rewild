@@ -69,8 +69,10 @@ export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
   const ground = scene.getMeshByName("walkable-meadow");
   if (ground) ground.receiveShadows = true;
   // Fern colonies replace the previous sharp procedural grass tufts.
-  void installFernForest(scene, forestTrees);
-  void installSearsiaShrubs(scene, forestTrees);
+  // Diagnostic switches let us isolate GPU geometry errors without changing game systems.
+  const diagnostics = new URLSearchParams(window.location.search);
+  if (!diagnostics.has("noFerns")) void installFernForest(scene, forestTrees);
+  if (!diagnostics.has("noShrubs")) void installSearsiaShrubs(scene, forestTrees);
   const player = createPlayer(scene, camera, obstacles);
   const harvestNodes = createGatheringSystem(scene, player, obstacles, forestTrees);
   // Keep the shadow map inexpensive: only the nearby player and cabin,
@@ -146,8 +148,8 @@ export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
     }
   });
   void equipAxe(scene, player.root, player.isHarvesting, player.getRightHand).catch(error => console.warn("Axe asset unavailable:", error));
-  void installRockModels(scene, harvestNodes).catch(error => console.warn("Rock asset unavailable; keeping old rocks:", error));
-  void installOakForest(scene, forestTrees, harvestNodes).catch(error => {
+  if (!diagnostics.has("noRocks")) void installRockModels(scene, harvestNodes).catch(error => console.warn("Rock asset unavailable; keeping old rocks:", error));
+  if (!diagnostics.has("noOaks")) void installOakForest(scene, forestTrees, harvestNodes).catch(error => {
     console.warn("Oak model unavailable; keeping procedural forest.", error);
   });
   return scene;
