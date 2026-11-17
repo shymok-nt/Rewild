@@ -4,7 +4,8 @@ import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import "@babylonjs/core/Meshes/instancedMesh";
 import "@babylonjs/core/Meshes/thinInstanceMesh";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
-import { DynamicTexture } from "@babylonjs/core/Materials/Textures/dynamicTexture";
+import { Texture } from "@babylonjs/core/Materials/Textures/texture";
+import { PBRMaterial } from "@babylonjs/core/Materials/PBR/pbrMaterial";
 import type { Scene } from "@babylonjs/core/scene";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { VertexData } from "@babylonjs/core/Meshes/mesh.vertexData";
@@ -35,7 +36,6 @@ function box(scene: Scene, name: string, width: number, height: number, depth: n
 export function buildEnvironment(scene: Scene, forestTrees: ForestTree[] = []): Footprint[] {
   const obstacles: Footprint[] = [];
   const random = seeded(40217);
-  const meadow = material(scene, "meadow-green", "#526D4B");
   const soil = material(scene, "footpath", "#88785D");
   const bark = material(scene, "pine-bark", "#584738");
   const pineDark = material(scene, "pine-dark", "#355D49");
@@ -54,47 +54,28 @@ export function buildEnvironment(scene: Scene, forestTrees: ForestTree[] = []): 
   ];
 
   const ground = MeshBuilder.CreateGround("walkable-meadow", { width: 140, height: 140, subdivisions: 4 }, scene);
-  // One-time, seamless-looking ground material: broad mottling plus fine
-  // grass fibers. No new world meshes or per-frame texture updates.
-  const texture = new DynamicTexture("meadow-grass-cover", { width: 512, height: 512 }, scene, false);
-  const context = texture.getContext();
-  const rng = seeded(91242);
-  context.fillStyle = "#7c966b";
-  context.fillRect(0, 0, 512, 512);
-  // Large translucent color variations create a softer natural meadow.
-  for (let i = 0; i < 240; i++) {
-    const x = rng() * 512;
-    const y = rng() * 512;
-    const radius = 12 + rng() * 45;
-    context.fillStyle = [
-      "rgba(52,80,43,0.09)", "rgba(174,169,105,0.10)",
-      "rgba(49,91,53,0.07)", "rgba(185,193,134,0.12)",
-    ][Math.floor(rng() * 4)];
-    context.beginPath();
-    context.ellipse(x, y, radius, radius * (0.6 + rng() * 0.7), rng() * 6.28, 0, Math.PI * 2);
-    context.fill();
+  // Grass004 1K PBR maps (ambientCG). All texture assets live in
+  // public/textures/ground; the 3D ground mesh/collisions remain unchanged.
+  const groundMaterial = new PBRMaterial("grass004-ground-pbr", scene);
+  groundMaterial.metallic = 0;
+  groundMaterial.roughness = 1;
+  const colorMap = new Texture("/textures/ground/grass-color.jpg", scene);
+  const normalMap = new Texture("/textures/ground/grass-normal.jpg", scene);
+  const ormMap = new Texture("/textures/ground/grass-orm.jpg", scene);
+  for (const map of [colorMap, normalMap, ormMap]) {
+    map.uScale = 12;
+    map.vScale = 12;
+    map.wrapU = Texture.WRAP_ADDRESSMODE;
+    map.wrapV = Texture.WRAP_ADDRESSMODE;
   }
-  // Subtle individual blades, tiny dry fragments and leaf litter.
-  const fiberColors = [
-    "rgba(49,76,38,0.45)", "rgba(174,190,132,0.55)",
-    "rgba(85,116,66,0.50)", "rgba(185,168,103,0.30)",
-  ];
-  for (let i = 0; i < 20000; i++) {
-    const x = rng() * 512;
-    const y = rng() * 512;
-    context.strokeStyle = fiberColors[Math.floor(rng() * fiberColors.length)];
-    context.lineWidth = 0.45 + rng() * 0.8;
-    context.beginPath();
-    context.moveTo(x, y);
-    context.lineTo(x + (rng() - 0.5) * 3, y - (1.5 + rng() * 4));
-    context.stroke();
-  }
-  texture.update();
-  texture.uScale = 9;
-  texture.vScale = 9;
-  meadow.diffuseColor = Color3.White();
-  meadow.diffuseTexture = texture;
-  ground.material = meadow;
+  groundMaterial.albedoTexture = colorMap;
+  groundMaterial.bumpTexture = normalMap;
+  groundMaterial.metallicTexture = ormMap;
+  groundMaterial.useRoughnessFromMetallicTextureGreen = true;
+  groundMaterial.useMetallnessFromMetallicTextureBlue = true;
+  groundMaterial.useAmbientOcclusionFromMetallicTextureRed = true;
+  groundMaterial.invertNormalMapY = false;
+  ground.material = groundMaterial;
 
   // Keep a single coplanar-safe ground surface. The old overlapping meadow\n  // discs caused depth-buffer flickering when the camera moved.\n\n  // A continuous curved ribbon replaces intersecting rectangular path segments.
   const waypoints = [
