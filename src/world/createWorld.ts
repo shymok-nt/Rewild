@@ -27,10 +27,10 @@ export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
   camera.attachControl(canvas, true);
   camera.wheelPrecision = 45;
 
-  // DayEnvironmentHDRI114: equirectangular daytime panorama.
+  // DaySkyHDRI072B: clean equirectangular daytime sky panorama.
   // A lightweight JPG dome is used instead of importing Blender/USD/Godot files.
-  // Note: the original panorama contains a rooftop in its lower hemisphere.
-  const sky = new PhotoDome("day-environment-sky", "/models/DayEnvironmentHDRI114_1K_TONEMAPPED.jpg", {
+  // Unlike the previous rooftop panorama, this sky has no city foreground.
+  const sky = new PhotoDome("day-environment-sky", "/models/DaySkyHDRI072B_1K_TONEMAPPED.jpg", {
     resolution: 32,
     size: 900,
     useDirectMapping: true,
