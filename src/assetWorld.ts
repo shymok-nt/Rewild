@@ -1,0 +1,41 @@
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+/** Loads pre-authored GLB geometry; Three.js is used only to render/recycle models. */
+export async function loadWorldAssets(scene: THREE.Scene): Promise<(distance: number) => void> {
+  const loader = new GLTFLoader();
+  const [building, road] = await Promise.all([
+    loader.loadAsync("/assets/building.glb"),
+    loader.loadAsync("/assets/road-segment.glb")
+  ]);
+  const blocks: THREE.Object3D[] = [];
+  const roads: THREE.Object3D[] = [];
+  for (let i = 0; i < 24; i++) {
+    const side = i % 2 === 0 ? -1 : 1;
+    const model = building.scene.clone(true);
+    model.position.set(side * 12.3, 0, 8 - Math.floor(i / 2) * 14);
+    model.rotation.y = side === -1 ? Math.PI / 2 : -Math.PI / 2;
+    model.scale.setScalar(0.95 + (i % 4) * 0.035);
+    model.traverse(o => { if (o instanceof THREE.Mesh) { o.castShadow = false; o.receiveShadow = true; } });
+    scene.add(model);
+    blocks.push(model);
+  }
+  for (let i = 0; i < 12; i++) {
+    const model = road.scene.clone(true);
+    model.position.z = 8 - i * 18;
+    model.traverse(o => { if (o instanceof THREE.Mesh) o.receiveShadow = true; });
+    scene.add(model);
+    roads.push(model);
+  }
+  return distance => {
+    const cityCycle = 168;
+    for (let i = 0; i < blocks.length; i++) {
+      const index = Math.floor(i / 2);
+      blocks[i].position.z = 8 - ((index * 14 - distance % cityCycle + cityCycle) % cityCycle);
+    }
+    const roadCycle = roads.length * 18;
+    for (let i = 0; i < roads.length; i++) {
+      roads[i].position.z = 8 - ((i * 18 - distance % roadCycle + roadCycle) % roadCycle);
+    }
+  };
+}
