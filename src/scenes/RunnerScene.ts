@@ -195,6 +195,39 @@ export class RunnerScene extends Phaser.Scene {
         g.fillRect(wx, y - bh * 0.44, Math.max(3, bw * 0.17), Math.max(5, bh * 0.15));
       }
     }
+    // Repeating street furniture gives the scene depth without loading textures.
+    for (let i = 0; i < 16; i++) {
+      const t = ((i / 16 + this.distance * 0.028) % 1 + 1) % 1;
+      if (t < 0.12 || t > 0.94) continue;
+      const y = this.roadY(t);
+      const size = 4 + t * 46;
+      const offset = this.roadHalf(t) + 15 + t * 23;
+      for (const side of [-1, 1]) {
+        const x = W / 2 + side * offset;
+        if (i % 3 === 0) {
+          // Streetlight with a warm glowing lamp.
+          g.lineStyle(Math.max(2, t * 6), 0x46536c);
+          g.lineBetween(x, y, x, y - size * 2.7);
+          g.lineBetween(x, y - size * 2.7, x - side * size * 0.65, y - size * 2.7);
+          g.fillStyle(0xffe6a1, 0.9);
+          g.fillCircle(x - side * size * 0.65, y - size * 2.7, Math.max(2, t * 8));
+        } else if (i % 3 === 1) {
+          // Planter and a leafy tree.
+          g.fillStyle(0x9b715c);
+          g.fillRoundedRect(x - size * 0.18, y - size * 0.5, size * 0.36, size * 0.5, 2);
+          g.fillStyle(0x5b956e);
+          g.fillCircle(x, y - size * 1.25, size * 0.65);
+          g.fillStyle(0x7cb88b);
+          g.fillCircle(x - size * 0.2, y - size * 1.55, size * 0.48);
+        } else {
+          // Small roadside bollard.
+          g.fillStyle(0x334760);
+          g.fillRoundedRect(x - size * 0.12, y - size * 0.65, size * 0.24, size * 0.65, 3);
+          g.fillStyle(0xffd27e);
+          g.fillRect(x - size * 0.12, y - size * 0.5, size * 0.24, Math.max(2, t * 4));
+        }
+      }
+    }
     // Lane markers: world-space depth scrolling, perspective-sized.
     for (let i = 0; i < 23; i++) {
       const t = ((i / 23 + this.distance * 0.055) % 1 + 1) % 1;
