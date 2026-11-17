@@ -9,6 +9,7 @@ import { GameAudio } from "./audio";
 import { createRoadDetails } from "./road";
 import { PickupEffects } from "./effects";
 import { createSky } from "./sky";
+import { clampLane, jumpArc, runnerSpeed } from "./rules";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("App container not found");
@@ -138,8 +139,8 @@ pauseButton.textContent="▶";
 function action(key:string){
  if(dead&&key!=="r"&&key!==" ")return;
  if(paused&&key!=="p"&&key!=="Escape")return;
- if(key==="ArrowLeft"||key==="a"){const prev=lane;lane=Math.max(-1,lane-1);if(prev!==lane)audio.lane();}
- if(key==="ArrowRight"||key==="d"){const prev=lane;lane=Math.min(1,lane+1);if(prev!==lane)audio.lane();}
+ if(key==="ArrowLeft"||key==="a"){const prev=lane;lane=clampLane(lane-1);if(prev!==lane)audio.lane();}
+ if(key==="ArrowRight"||key==="d"){const prev=lane;lane=clampLane(lane+1);if(prev!==lane)audio.lane();}
  if((key==="ArrowUp"||key===" "||key==="w")&&!jumpActive&&slide<=0){jumpActive=true;jumpElapsed=0;jump=jumpDuration;audio.jump();}
  if((key==="ArrowDown"||key==="s")&&slide<=0&&!jumpActive)slide=0.72;audio.slide();
  if(key==="p"||key==="Escape"){paused=!paused;pauseButton.textContent=paused?"▶":"Ⅱ";if(!dead){statusEl.hidden=!paused;if(paused)statusEl.textContent="DURAKLATILDI · P İLE DEVAM";else{restartButton.hidden=true;audio.start();}}}
@@ -172,7 +173,7 @@ function frame(){
   frameCount=0;frameSeconds=0;
  }
  if(!paused&&!dead){
-  const speed=Math.min(24,13+distance/450);
+  const speed=runnerSpeed(distance);
   distance+=dt*speed;
   updateCity(distance);
   updateStreet(distance);
@@ -180,7 +181,7 @@ function frame(){
   mixer?.update(dt);
   laneVisual=THREE.MathUtils.damp(laneVisual,lane*laneWidth,13,dt);
   if(jumpActive){jumpElapsed=Math.min(jumpDuration,jumpElapsed+dt);jump=jumpDuration-jumpElapsed;if(jumpElapsed>=jumpDuration){jumpActive=false;jump=0;}}
-  const jumpHeight=jumpActive?Math.sin(jumpElapsed/jumpDuration*Math.PI)*1.8:0;
+  const jumpHeight=jumpActive?jumpArc(jumpElapsed,jumpDuration):0;
   playAnimation(jumpActive?"jump":slide>0?"slide":"run");
   if(slide>0)slide=Math.max(0,slide-dt);
   playerRoot.position.set(laneVisual,jumpHeight,0);
