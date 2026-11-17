@@ -6,10 +6,8 @@ const HORIZON = 162;
 const BOTTOM = 622;
 const ROAD_TOP = 66;
 const ROAD_BOTTOM = 440;
-const LANES = [-1, 0, 1] as const;
 
 function lerp(a: number, b: number, t: number): number { return a + (b - a) * t; }
-function clamp01(t: number): number { return Math.max(0, Math.min(1, t)); }
 
 export class RunnerScene extends Phaser.Scene {
   private art!: Phaser.GameObjects.Graphics;
@@ -50,9 +48,10 @@ export class RunnerScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(10);
 
     this.overlay = this.add.text(W / 2, H / 2, "", { fontFamily: "Arial", fontSize: "28px", color: "#ffffff", align: "center", stroke: "#182b49", strokeThickness: 7 }).setOrigin(0.5).setDepth(30).setVisible(false);
-    this.stage.add(this.children.list.filter(child => child !== this.stage));
+    this.stage.add([...this.children.list].filter(child => child !== this.stage));
     const resize = (size: { width: number; height: number }) => this.stage.setScale(size.width / W, size.height / H);
     this.scale.on("resize", resize);
+    this.events.once("shutdown", () => this.scale.off("resize", resize));
     resize(this.scale.gameSize);
     try { this.best = Number(localStorage.getItem("rush-city-best") || 0); } catch {}
     const kb = this.input.keyboard;
@@ -86,7 +85,7 @@ export class RunnerScene extends Phaser.Scene {
     this.gameOver = true;
     this.best = Math.max(this.best, Math.floor(this.distance));
     try { localStorage.setItem("rush-city-best", String(this.best)); } catch {}
-    this.overlay.setText("KOŞU BİTTİ!\\n" + Math.floor(this.distance) + " METRE  •  " + this.coins + " ALTIN\\nREKOR: " + this.best + " m\\nR / DOKUN: TEKRAR").setVisible(true);
+    this.overlay.setText("KOŞU BİTTİ!\n" + Math.floor(this.distance) + " METRE  •  " + this.coins + " ALTIN\nREKOR: " + this.best + " m\nR / DOKUN: TEKRAR").setVisible(true);
   }
 
   update(_time: number, delta: number): void {
@@ -100,14 +99,14 @@ export class RunnerScene extends Phaser.Scene {
     this.visualLane = Phaser.Math.Linear(this.visualLane, this.lane, 1 - Math.exp(-dt * 14));
     this.jumpTime = Math.max(0, this.jumpTime - dt);
     this.slideTime = Math.max(0, this.slideTime - dt);
+    const previousDistance = this.distance;
     this.distance += dt * Math.min(30, 20 + this.distance / 500);
     if (this.distance > this.nextSpawn) {
       this.obstacles.push({ lane: Phaser.Math.Between(-1, 1), z: this.distance + 65, kind: Phaser.Math.Between(0, 3), collected: false });
       this.nextSpawn = this.distance + Phaser.Math.Between(17, 24);
     }
     for (const o of this.obstacles) {
-      const d = o.z - this.distance;
-      if (!o.collected && d < 3 && d > -3 && o.lane === this.lane) {
+      if (!o.collected && o.z >= previousDistance && o.z <= this.distance + 2.5 && o.lane === this.lane) {
         if (o.kind === 3) { this.coins++; o.collected = true; }
         else if ((o.kind === 0 && this.jumpTime > 0.18) || (o.kind === 1 && this.slideTime > 0.12)) o.collected = true;
         else { this.lose(); break; }
@@ -189,7 +188,7 @@ export class RunnerScene extends Phaser.Scene {
     for (const o of this.obstacles) {
       if (o.collected) continue;
       const t = Math.max(0, Math.min(1, 1 - (o.z - this.distance) / 65));
-      if (t <= 0 || t >= 1) continue;
+      if (t <= 0 || t > 1) continue;
       const x = this.roadX(o.lane, t), y = this.roadY(t), size = 8 + t * 70;
       if (o.kind === 3) {
         g.fillStyle(0xffd34d); g.fillCircle(x, y - size * 0.6, size * 0.3);
