@@ -1,0 +1,86 @@
+import "@babylonjs/core/Meshes/thinInstanceMesh";
+import { Mesh } from "@babylonjs/core/Meshes/mesh";
+import { VertexData } from "@babylonjs/core/Meshes/mesh.vertexData";
+import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
+import { Color3 } from "@babylonjs/core/Maths/math.color";
+import { Matrix, Quaternion, Vector3 } from "@babylonjs/core/Maths/math.vector";
+import type { Scene } from "@babylonjs/core/scene";
+
+/**
+ * Visual-only prototype: 16 tufts beside the spawn point.
+ * Not a world vegetation system. Approve the appearance before scaling up.
+ */
+export function createGrassPrototype(scene: Scene): void {
+  const mesh = new Mesh("grass-prototype-source", scene);
+  const positions: number[] = [];
+  const indices: number[] = [];
+  const colors: number[] = [];
+  const normals: number[] = [];
+  let seed = 81271;
+  const random = () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+
+  // Curved, tapered leaf strips with two vertical segments; no square cards.
+  // A tuft is deliberately low-poly and small enough to blend with the ground.
+  for (let blade = 0; blade < 15; blade++) {
+    const angle = random() * Math.PI * 2;
+    const dx = Math.cos(angle);
+    const dz = Math.sin(angle);
+    const px = (random() - 0.5) * 0.27;
+    const pz = (random() - 0.5) * 0.27;
+    const height = 0.23 + random() * 0.29;
+    const width = 0.018 + random() * 0.017;
+    const lean = 0.11 + random() * 0.18;
+    const tangentX = -dz;
+    const tangentZ = dx;
+    const base = positions.length / 3;
+    for (const [t, w] of [[0, 1], [0.55, 0.7], [1, 0]] as const) {
+      const bend = lean * t * t;
+      const x = px + dx * bend;
+      const z = pz + dz * bend;
+      const y = 0.012 + height * t;
+      positions.push(x - tangentX * width * w, y, z - tangentZ * width * w);
+      positions.push(x + tangentX * width * w, y, z + tangentZ * width * w);
+      const shade = 0.82 + random() * 0.18;
+      const tip = t * 0.10;
+      for (let side = 0; side < 2; side++) {
+        colors.push((0.32 + tip) * shade, (0.48 + tip) * shade, (0.25 + tip * 0.5) * shade, 1);
+      }
+    }
+    indices.push(base, base + 1, base + 2, base + 1, base + 3, base + 2);
+    indices.push(base + 2, base + 3, base + 4, base + 3, base + 5, base + 4);
+  }
+  VertexData.ComputeNormals(positions, indices, normals);
+  const data = new VertexData();
+  data.positions = positions;
+  data.indices = indices;
+  data.normals = normals;
+  data.colors = colors;
+  data.applyToMesh(mesh);
+
+  const material = new StandardMaterial("grass-prototype-material", scene);
+  material.diffuseColor = Color3.White();
+  material.specularColor = Color3.Black();
+  material.backFaceCulling = false;
+  mesh.material = material;
+  mesh.isPickable = false;
+  mesh.alwaysSelectAsActiveMesh = true;
+
+  // Fixed 4x4 preview patch at the right side of the initial player position.
+  const matrices = new Float32Array(16 * 16);
+  for (let i = 0; i < 16; i++) {
+    const x = 6.2 + (i % 4) * 0.48 + (random() - 0.5) * 0.18;
+    const z = 6.2 + Math.floor(i / 4) * 0.48 + (random() - 0.5) * 0.18;
+    const scale = 0.8 + random() * 0.35;
+    Matrix.Compose(
+      new Vector3(scale, scale, scale),
+      Quaternion.RotationAxis(Vector3.Up(), random() * Math.PI * 2),
+      new Vector3(x, 0.02, z),
+    ).copyToArray(matrices, i * 16);
+  }
+  mesh.thinInstanceSetBuffer("matrix", matrices, 16, true);
+  mesh.thinInstanceRefreshBoundingInfo();
+  console.info("[Rewild] Stylized grass prototype: 16 tufts, visual test only");
+}
