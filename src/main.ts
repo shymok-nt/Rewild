@@ -9,10 +9,11 @@ import { GameAudio } from "./audio";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("App container not found");
-app.innerHTML = `<div id="hud"><strong>RUSH CITY</strong><span id="score">0 m</span><span id="coins">● 0</span></div><div id="instructions">← → ŞERİT &nbsp; · &nbsp; ↑ ZIPLA &nbsp; · &nbsp; ↓ KAY &nbsp; · &nbsp; P DURAKLAT</div><div id="mobile-controls"><button data-action="ArrowLeft" aria-label="Sola geç">◀</button><button data-action="ArrowUp" aria-label="Zıpla">↑</button><button data-action="ArrowDown" aria-label="Kay">↓</button><button data-action="ArrowRight" aria-label="Sağa geç">▶</button></div><button id="pause-button" aria-label="Duraklat">Ⅱ</button><button id="sound-button" aria-label="Sesi aç veya kapat">♫</button><div id="status" hidden></div>`;
+app.innerHTML = `<div id="hud"><strong>RUSH CITY</strong><span id="score">0 m</span><span id="coins">● 0</span></div><div id="instructions">← → ŞERİT &nbsp; · &nbsp; ↑ ZIPLA &nbsp; · &nbsp; ↓ KAY &nbsp; · &nbsp; P DURAKLAT</div><div id="mobile-controls"><button data-action="ArrowLeft" aria-label="Sola geç">◀</button><button data-action="ArrowUp" aria-label="Zıpla">↑</button><button data-action="ArrowDown" aria-label="Kay">↓</button><button data-action="ArrowRight" aria-label="Sağa geç">▶</button></div><button id="pause-button" aria-label="Duraklat">Ⅱ</button><button id="sound-button" aria-label="Sesi aç veya kapat">♫</button><div id="status" hidden></div><button id="restart-button" hidden>YENİDEN OYNA</button>`;
 const scoreEl = document.querySelector<HTMLElement>("#score")!;
 const coinsEl = document.querySelector<HTMLElement>("#coins")!;
 const statusEl = document.querySelector<HTMLElement>("#status")!;
+const restartButton = document.querySelector<HTMLButtonElement>("#restart-button")!;
 const pauseButton = document.querySelector<HTMLButtonElement>("#pause-button")!;
 const soundButton = document.querySelector<HTMLButtonElement>("#sound-button")!;
 const audio = new GameAudio();
@@ -130,8 +131,9 @@ function action(key:string){
  if((key==="ArrowUp"||key===" "||key==="w")&&!jumpActive&&slide<=0){jumpActive=true;jumpElapsed=0;jump=jumpDuration;audio.jump();}
  if((key==="ArrowDown"||key==="s")&&slide<=0&&!jumpActive)slide=0.72;audio.slide();
  if(key==="p"||key==="Escape"){paused=!paused;pauseButton.textContent=paused?"▶":"Ⅱ";if(!dead){statusEl.hidden=!paused;statusEl.textContent="DURAKLATILDI · P İLE DEVAM";}}
- if(dead&&(key==="r"||key===" ")){dead=false;paused=false;pauseButton.textContent="Ⅱ";distance=0;coins=0;lane=0;laneVisual=0;jump=0;slide=0;jumpActive=false;jumpElapsed=0;hazards.reset();statusEl.hidden=true;audio.start();}
+ if(dead&&(key==="r"||key===" ")){restartButton.hidden=true;dead=false;paused=false;pauseButton.textContent="Ⅱ";distance=0;coins=0;lane=0;laneVisual=0;jump=0;slide=0;jumpActive=false;jumpElapsed=0;hazards.reset();statusEl.hidden=true;audio.start();}
 }
+restartButton.addEventListener("click",()=>{audio.unlock();action("r");});
 pauseButton.addEventListener("click",()=>{audio.unlock();action("p");});
 document.querySelectorAll<HTMLButtonElement>("[data-action]").forEach(button=>button.addEventListener("pointerdown",e=>{e.preventDefault();audio.unlock();action(button.dataset.action||"");}));
 window.addEventListener("keydown",e=>{if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"," "].includes(e.key))e.preventDefault();if(!e.repeat){audio.unlock();action(e.key);}});
@@ -185,6 +187,7 @@ function frame(){
     best=Math.max(best,Math.floor(distance));
     localStorage.setItem("rush-city-best",String(best));
     statusEl.hidden = false;
+    restartButton.hidden = false;
     statusEl.textContent = "KOŞU BİTTİ · "+Math.floor(distance)+" m · REKOR "+best+" m · R İLE TEKRAR";
   }
   scoreEl.textContent=Math.floor(distance)+" m · REKOR "+best+" m";
