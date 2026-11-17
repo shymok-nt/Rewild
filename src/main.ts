@@ -51,6 +51,23 @@ for(let i=0;i<46;i++)for(const lane of [-1,1]){
 const updateCity = createCity(scene);
 const updateStreet = createStreetDetails(scene);
 const playerRoot=new THREE.Group();scene.add(playerRoot);
+const shadowCanvas=document.createElement("canvas");
+shadowCanvas.width=shadowCanvas.height=128;
+const shadowCtx=shadowCanvas.getContext("2d")!;
+const shadowGradient=shadowCtx.createRadialGradient(64,64,4,64,64,64);
+shadowGradient.addColorStop(0,"rgba(14,28,41,0.44)");
+shadowGradient.addColorStop(0.45,"rgba(14,28,41,0.2)");
+shadowGradient.addColorStop(1,"rgba(14,28,41,0)");
+shadowCtx.fillStyle=shadowGradient;
+shadowCtx.fillRect(0,0,128,128);
+const shadowTexture=new THREE.CanvasTexture(shadowCanvas);
+const playerShadow=new THREE.Mesh(
+ new THREE.PlaneGeometry(2.1,1.35),
+ new THREE.MeshBasicMaterial({map:shadowTexture,transparent:true,depthWrite:false,opacity:0.85})
+);
+playerShadow.rotation.x=-Math.PI/2;
+playerShadow.position.y=0.045;
+scene.add(playerShadow);
 const loader=new GLTFLoader();
 let mixer:THREE.AnimationMixer|null=null;
 const clips = new Map<string,THREE.AnimationAction>();
@@ -147,6 +164,9 @@ function frame(){
   playAnimation(jumpActive?"jump":slide>0?"slide":"run");
   if(slide>0)slide=Math.max(0,slide-dt);
   playerRoot.position.set(laneVisual,jumpHeight,0);
+  playerShadow.position.x=laneVisual;
+  playerShadow.scale.setScalar(1+jumpHeight*0.16);
+  (playerShadow.material as THREE.MeshBasicMaterial).opacity=0.85-jumpHeight*0.25;
   playerRoot.scale.y=slide>0?0.55:1;
   camera.position.x=THREE.MathUtils.damp(camera.position.x,laneVisual*0.16,2.8,dt);
   camera.lookAt(camera.position.x*0.25,1.25,-16);
