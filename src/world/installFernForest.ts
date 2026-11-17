@@ -1,3 +1,4 @@
+import { validImportedMeshes } from "./validateImportedMeshes";
 import "@babylonjs/loaders/glTF";
 import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
@@ -24,8 +25,7 @@ export async function installFernForest(scene: Scene, trees: readonly ForestTree
   try {
     const result = await SceneLoader.ImportMeshAsync("", "/models/fern_02/", "fern_02_1k.gltf", scene);
     if (scene.isDisposed) return;
-    const sources = result.meshes.filter((mesh): mesh is Mesh =>
-      mesh instanceof Mesh && mesh.getTotalVertices() > 0);
+    const sources = validImportedMeshes(result.meshes, "Fern 02");
     if (!sources.length) throw new Error("Fern asset has no renderable meshes");
 
     // Preserve the glTF source hierarchy transforms when creating instances.
