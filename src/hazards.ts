@@ -22,6 +22,7 @@ const panelGeo = new THREE.BoxGeometry(1, 1, 0.12);
 const wheelGeo = new THREE.TorusGeometry(0.36, 0.12, 8, 16);
 const coinGeo = new THREE.TorusGeometry(0.38, 0.12, 10, 22);
 const coinCoreGeo = new THREE.CylinderGeometry(0.31, 0.31, 0.06, 22);
+const vanGeo = new THREE.BoxGeometry(1.8, 1.25, 2.1);
 
 function mesh(parent: THREE.Group, geo: THREE.BufferGeometry, mat: THREE.Material,
  x = 0, y = 0, z = 0): THREE.Mesh {
@@ -71,9 +72,7 @@ function createVisual(kind: HazardKind): THREE.Group {
     }
   } else {
     // Stylized city delivery van with curved cabin, grille, lamps and wheels.
-    const body = mesh(g, new THREE.CapsuleGeometry(0.78, 1.2, 5, 12), orange, 0, 1.05);
-    body.rotation.z = Math.PI / 2;
-    body.scale.set(1.1, 1.1, 1.25);
+    const body = mesh(g, vanGeo, orange, 0, 1.05);
     const cabin = mesh(g, new THREE.SphereGeometry(0.75, 16, 10), white, 0, 1.47, -0.35);
     cabin.scale.set(1.05, 0.7, 0.8);
     const windshield = mesh(g, new THREE.SphereGeometry(0.67, 14, 8), windowMat, 0, 1.51, -0.47);
@@ -94,6 +93,7 @@ export class HazardSystem {
   private readonly active: Hazard[] = [];
   private readonly pool = new Map<HazardKind, Hazard[]>();
   private nextSpawn = 25;
+  private readonly events: {distance:number;lane:number;kind:HazardKind}[] = [];
   private readonly spawnZ = -92;
   private readonly laneWidth = 2.9;
   constructor(private readonly scene: THREE.Scene) {}
@@ -120,6 +120,7 @@ export class HazardSystem {
   reset(): void {
     for (let i = this.active.length - 1; i >= 0; i--) this.release(i);
     this.nextSpawn = 25;
+    this.events.length = 0;
   }
   update(dt: number, distance: number, speed: number, playerLane: number, jumpHeight: number, sliding: boolean):
     { coins: number; crashed: boolean } {
