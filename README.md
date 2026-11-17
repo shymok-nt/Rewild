@@ -47,12 +47,14 @@ The project includes a GitHub Actions build workflow. A successful workflow run 
 ## Architecture
 
 - `src/main.ts`: Three.js renderer, camera, input, avatar, main game loop and HUD
-- `src/city.ts`: recycled facade blocks, shop trim, windows and street trees
+- `src/city.ts`: recycled facade blocks, shop signage, instanced windows and street trees
 - `src/street.ts`: recycled street furniture, lamps and planters
 - `src/hazards.ts`: pooled coins and obstacles, spawn patterns and collision rules
 - `src/road.ts`: repeating curb stones, lane markings and pedestrian crossings
 - `src/ground.ts`: seeded asphalt and sidewalk texture generation
 - `src/audio.ts`: original synthesized audio with mute preference
+- `src/effects.ts`: pooled 3D coin-pickup particles
+- `src/sky.ts`: gradient sky and generated cloud sprites
 - `public/assets/character.glb`: temporary animated example asset from the Three.js example library
 
 ## Visual and technical roadmap
