@@ -38,9 +38,11 @@ export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
   const harvestNodes = createGatheringSystem(scene, player, obstacles);
   void equipAxe(scene, player.root, player.isHarvesting).catch(error => console.warn("Axe asset unavailable:", error));
   void installRockModels(scene, harvestNodes).catch(error => console.warn("Rock asset unavailable; keeping old rocks:", error));
-  void installGrassPatches(scene, forestTrees).catch(error => {
-    console.warn("Grass preview disabled after load error:", error);
-  });
+  try {
+    installGrassPatches(scene, forestTrees);
+  } catch (error) {
+    console.warn("Procedural grass unavailable:", error);
+  }
   void installOakForest(scene, forestTrees, harvestNodes).catch(error => {
     console.warn("Oak model unavailable; keeping procedural forest.", error);
   });
