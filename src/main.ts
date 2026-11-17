@@ -4,6 +4,7 @@ import "./style.css";
 import { createCity } from "./city";
 import { HazardSystem } from "./hazards";
 import { createStreetDetails } from "./street";
+import { createGroundMaterials } from "./ground";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("App container not found");
@@ -34,8 +35,7 @@ sun.shadow.mapSize.set(1024, 1024);
 sun.shadow.camera.left = -22; sun.shadow.camera.right = 22;
 sun.shadow.camera.top = 25; sun.shadow.camera.bottom = -25;
 scene.add(sun);
-const roadMaterial = new THREE.MeshStandardMaterial({color:0x394c63,roughness:0.94});
-const sidewalkMaterial = new THREE.MeshStandardMaterial({color:0xe6d5c1,roughness:0.9});
+const {road:roadMaterial,sidewalk:sidewalkMaterial}=createGroundMaterials();
 const lineMaterial = new THREE.MeshStandardMaterial({color:0xfceacb,emissive:0x50422b,emissiveIntensity:0.15});
 function plane(width:number,depth:number,x:number,y:number,z:number,material:THREE.Material):THREE.Mesh {
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width,depth),material);
