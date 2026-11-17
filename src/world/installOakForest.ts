@@ -50,7 +50,14 @@ export async function installOakForest(scene: Scene, trees: readonly ForestTree[
   };
 
   try {
-    for (const tree of trees) instantiate("oak-forest", tree.x, tree.z, tree.scale, tree.rotation);
+    for (const [i, tree] of trees.entries()) {
+      const anchor = instantiate("oak-forest", tree.x, tree.z, tree.scale, tree.rotation);
+      const resource = harvestNodes.find(node => node.id === "forest-" + i);
+      if (resource) {
+        anchor.parent = resource.visual;
+        anchor.position.set(0, 0, 0);
+      }
+    }
     for (const node of harvestNodes) {
       if (node.kind !== "wood") continue;
       const anchor = instantiate("oak-harvest-" + node.id, node.position.x, node.position.z, 0.82, 0);
