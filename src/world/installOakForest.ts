@@ -1,3 +1,4 @@
+import { validImportedMeshes } from "./validateImportedMeshes";
 import "@babylonjs/loaders/glTF";
 import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import type { Scene } from "@babylonjs/core/scene";
@@ -16,7 +17,7 @@ export interface ForestTree { x: number; z: number; scale: number; rotation: num
 export async function installOakForest(scene: Scene, trees: readonly ForestTree[], harvestNodes: readonly HarvestNode[]): Promise<void> {
   const result = await SceneLoader.ImportMeshAsync("", "/models/", "stylized_mese_agaci.glb", scene);
   if (scene.isDisposed) return;
-  const meshes = result.meshes.filter((mesh): mesh is Mesh => mesh instanceof Mesh && mesh.getTotalVertices() > 0);
+  const meshes = validImportedMeshes(result.meshes, "Oak");
   if (!meshes.length) throw new Error("Oak GLB has no renderable geometry");
 
   // GLB mesh coordinates can inherit transforms from multiple parent nodes.
