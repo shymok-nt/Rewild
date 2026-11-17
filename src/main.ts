@@ -67,11 +67,20 @@ scene.add(playerShadow);
 // Model geometry comes exclusively from GLB files; Three.js only loads and animates it.
 const loader = new GLTFLoader();
 let runnerModel: THREE.Object3D | null = null;
+let runnerMixer: THREE.AnimationMixer | null = null;
 const joints = new Map<string, THREE.Object3D>();
 let runPhase = 0;
 let poseBlend = 0;
 function animateRunner(dt: number, pose: "run" | "jump" | "slide", speed: number): void {
   if (!runnerModel) return;
+  if (runnerMixer) {
+    runnerMixer.update(dt * Math.max(0.85, speed / 13));
+    const slide = pose === "slide" ? 1 : 0;
+    poseBlend += (slide - poseBlend) * (1 - Math.exp(-dt * 12));
+    runnerModel.position.y = -poseBlend * 0.65;
+    runnerModel.rotation.x = -poseBlend * 0.35;
+    return;
+  }
   runPhase += dt * Math.max(8, speed * 0.72);
   const smooth = 1 - Math.exp(-dt * 14);
   poseBlend += ((pose === "slide" ? 1 : 0) - poseBlend) * smooth;
@@ -93,15 +102,25 @@ function animateRunner(dt: number, pose: "run" | "jump" | "slide", speed: number
   }
 }
 let assetsReady = false;
-Promise.all([loader.loadAsync("/assets/runner.glb"), loadWorldAssets(scene)])
+Promise.all([loader.loadAsync("/assets/real-runner.glb"), loadWorldAssets(scene)])
   .then(([gltf, update]) => {
     runnerModel = gltf.scene;
+    const bounds = new THREE.Box3().setFromObject(runnerModel);
+    const height = Math.max(0.01, bounds.max.y - bounds.min.y);
+    const scale = 2.25 / height;
+    runnerModel.scale.setScalar(scale);
+    // Align model feet with ground regardless of source model units.
+    runnerModel.position.y = -bounds.min.y * scale;
+    if (gltf.animations.length > 0) {
+      runnerMixer = new THREE.AnimationMixer(runnerModel);
+      runnerMixer.clipAction(gltf.animations[0]).play();
+    }
     runnerModel.traverse(node => {
       if (node.name) joints.set(node.name, node);
       if (node instanceof THREE.Mesh) {
         node.castShadow = true;
         // Runner is a transform pivot, not a visible body part in the exported GLB.
-        if (node.name === "Runner") {
+        if (!runnerMixer && node.name === "Runner") {
           node.geometry = node.geometry.clone();
           node.geometry.setDrawRange(0, 0);
         }
