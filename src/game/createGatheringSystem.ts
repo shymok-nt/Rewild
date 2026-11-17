@@ -174,11 +174,19 @@ export function createGatheringSystem(scene: Scene, player: PlayerController, ob
       renderInventory();
       return;
     }
-    if (event.code !== "KeyE" || !panel.hidden) return;
-    const target = nearestHarvestNode(nodes, player.root.position);
-    if (!target || performance.now() < target.cooldownUntil) return;
-    event.preventDefault();
+  };
+  // Left click always swings, even when there is no nearby resource.
+  // Resource rewards still require a nearby valid target.
+  const canvas = scene.getEngine().getRenderingCanvas();
+  let nextSwingAt = 0;
+  const onMouseDown = (event: MouseEvent) => {
+    if (event.button !== 0 || !panel.hidden) return;
+    const now = performance.now();
+    if (now < nextSwingAt) return;
+    nextSwingAt = now + 550;
     player.harvest();
+    const target = nearestHarvestNode(nodes, player.root.position);
+    if (!target || now < target.cooldownUntil) return;
     playImpact(target.kind);
     target.remaining--;
     target.hitUntil = performance.now() + 180;
@@ -200,6 +208,7 @@ export function createGatheringSystem(scene: Scene, player: PlayerController, ob
     }
   };
   window.addEventListener("keydown", onKeyDown);
+  canvas?.addEventListener("mousedown", onMouseDown);
   scene.onBeforeRenderObservable.add(() => {
     const now = performance.now();
     const dt = Math.min(scene.getEngine().getDeltaTime() / 1000, 0.05);
@@ -240,11 +249,12 @@ export function createGatheringSystem(scene: Scene, player: PlayerController, ob
       }
     }
     const target = nearestHarvestNode(nodes, player.root.position);
-    prompt.textContent = target && panel.hidden ? "[E] " + target.label + " topla (" + target.remaining + " kaldı)" : "";
+    prompt.textContent = target && panel.hidden ? "[Sol tık] " + target.label + " topla (" + target.remaining + " kaldı)" : "";
     toast.style.opacity = now < noticeUntil ? "1" : "0";
   });
   scene.onDisposeObservable.add(() => {
     window.removeEventListener("keydown", onKeyDown);
+    canvas?.removeEventListener("mousedown", onMouseDown);
     panel.remove();
     hotbar.remove();
     prompt.remove();
