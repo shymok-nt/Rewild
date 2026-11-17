@@ -8,8 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "predev": "node scripts/prepareForestGround.mjs && node scripts/prepareFern.mjs",
-    "prebuild": "node scripts/prepareForestGround.mjs && node scripts/prepareFern.mjs"
+    "predev": "node scripts/prepareForestGround.mjs && node scripts/prepareFern.mjs && node scripts/prepareSearsia.mjs",
+    "prebuild": "node scripts/prepareForestGround.mjs && node scripts/prepareFern.mjs && node scripts/prepareSearsia.mjs"
   },
   "dependencies": {
     "@babylonjs/core": "^9.0.0",
