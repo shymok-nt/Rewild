@@ -54,36 +54,44 @@ export function buildEnvironment(scene: Scene, forestTrees: ForestTree[] = []): 
   ];
 
   const ground = MeshBuilder.CreateGround("walkable-meadow", { width: 140, height: 140, subdivisions: 4 }, scene);
-  // A single repeating texture provides continuous grass coverage at any distance.
+  // One-time, seamless-looking ground material: broad mottling plus fine
+  // grass fibers. No new world meshes or per-frame texture updates.
   const texture = new DynamicTexture("meadow-grass-cover", { width: 512, height: 512 }, scene, false);
   const context = texture.getContext();
-  // Layered terrain color variation: no extra meshes, no z-fighting.
-  context.fillStyle = "#78956a";
+  const rng = seeded(91242);
+  context.fillStyle = "#7c966b";
   context.fillRect(0, 0, 512, 512);
-  const textureRandom = seeded(91242);
-  for (let i = 0; i < 1700; i++) {
-    const x = textureRandom() * 512;
-    const y = textureRandom() * 512;
-    const radius = 4 + textureRandom() * 27;
-    context.fillStyle = ["#708b61", "#839d70", "#6b885d", "#8ba577"][Math.floor(textureRandom() * 4)];
+  // Large translucent color variations create a softer natural meadow.
+  for (let i = 0; i < 240; i++) {
+    const x = rng() * 512;
+    const y = rng() * 512;
+    const radius = 12 + rng() * 45;
+    context.fillStyle = [
+      "rgba(52,80,43,0.09)", "rgba(174,169,105,0.10)",
+      "rgba(49,91,53,0.07)", "rgba(185,193,134,0.12)",
+    ][Math.floor(rng() * 4)];
     context.beginPath();
-    context.ellipse(x, y, radius, radius * (0.5 + textureRandom()), textureRandom() * 6.28, 0, Math.PI * 2);
+    context.ellipse(x, y, radius, radius * (0.6 + rng() * 0.7), rng() * 6.28, 0, Math.PI * 2);
     context.fill();
   }
-  // Tiny overlapping strokes read as grass at ground level without billboards.
-  for (let i = 0; i < 36000; i++) {
-    const x = textureRandom() * 512;
-    const y = textureRandom() * 512;
-    context.strokeStyle = ["#58774c", "#9bae80", "#638250", "#b0b68a", "#718b59"][Math.floor(textureRandom() * 5)];
-    context.lineWidth = 0.5 + textureRandom() * 0.8;
+  // Subtle individual blades, tiny dry fragments and leaf litter.
+  const fiberColors = [
+    "rgba(49,76,38,0.45)", "rgba(174,190,132,0.55)",
+    "rgba(85,116,66,0.50)", "rgba(185,168,103,0.30)",
+  ];
+  for (let i = 0; i < 20000; i++) {
+    const x = rng() * 512;
+    const y = rng() * 512;
+    context.strokeStyle = fiberColors[Math.floor(rng() * fiberColors.length)];
+    context.lineWidth = 0.45 + rng() * 0.8;
     context.beginPath();
     context.moveTo(x, y);
-    context.lineTo(x + (textureRandom() - 0.5) * 3, y - 2 - textureRandom() * 5);
+    context.lineTo(x + (rng() - 0.5) * 3, y - (1.5 + rng() * 4));
     context.stroke();
   }
   texture.update();
-  texture.uScale = 10;
-  texture.vScale = 10;
+  texture.uScale = 9;
+  texture.vScale = 9;
   meadow.diffuseColor = Color3.White();
   meadow.diffuseTexture = texture;
   ground.material = meadow;
