@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import "./style.css";
 import { createCity } from "./city";
+import { HazardSystem } from "./hazards";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("App container not found");
@@ -50,7 +51,7 @@ const playerRoot=new THREE.Group();scene.add(playerRoot);
 const loader=new GLTFLoader();
 let mixer:THREE.AnimationMixer|null=null;
 let avatar:THREE.Object3D|null=null;
-let avatarReady=false;
+
 // Temporary animated model for the GLB pipeline; replace with art-directed human runner.
 const characterUrl="/assets/character.glb";
 loader.load(characterUrl,gltf=>{
@@ -65,7 +66,6 @@ loader.load(characterUrl,gltf=>{
   mixer=new THREE.AnimationMixer(avatar);
   const run=gltf.animations.find(a=>/run|jog/i.test(a.name))??gltf.animations.find(a=>/walk/i.test(a.name))??gltf.animations[0];
   if(run)mixer.clipAction(run).play();
-  avatarReady=true;
   statusEl.hidden=true;
 },undefined,()=>{
   statusEl.hidden=false;
@@ -74,25 +74,14 @@ loader.load(characterUrl,gltf=>{
 const clock=new THREE.Clock();
 let distance=0,coins=0,lane=0,laneVisual=0,jump=0,slide=0,paused=false,dead=false;
 const laneWidth=2.9;
-const obstacleMaterial=new THREE.MeshStandardMaterial({color:0xff735f,roughness:0.65});
-const coinMaterial=new THREE.MeshStandardMaterial({color:0xffd34f,metalness:0.65,roughness:0.24,emissive:0x8b5600,emissiveIntensity:0.35});
-type Item={mesh:THREE.Mesh,lane:number,kind:"coin"|"block",z:number};
-const items:Item[]=[];
-function spawn(){
- const l=Math.floor(Math.random()*3)-1;
- const isCoin=Math.random()<0.45;
- const mesh=isCoin?new THREE.Mesh(new THREE.TorusGeometry(0.43,0.12,10,20),coinMaterial):new THREE.Mesh(new THREE.BoxGeometry(1.6,1.2,0.7),obstacleMaterial);
- mesh.position.set(l*laneWidth,isCoin?1.2:0.6,-85);
- mesh.castShadow=true;scene.add(mesh);items.push({mesh,lane:l,kind:isCoin?"coin":"block",z:-85});
-}
-let spawnTimer=1.4;
+const hazards = new HazardSystem(scene);
 function action(key:string){
  if(key==="ArrowLeft"||key==="a")lane=Math.max(-1,lane-1);
  if(key==="ArrowRight"||key==="d")lane=Math.min(1,lane+1);
  if((key==="ArrowUp"||key===" "||key==="w")&&jump<=0&&slide<=0)jump=0.82;
  if((key==="ArrowDown"||key==="s")&&slide<=0&&jump<=0)slide=0.72;
  if(key==="p"||key==="Escape")paused=!paused;
- if(dead&&(key==="r"||key===" ")){dead=false;distance=0;coins=0;items.splice(0).forEach(i=>{scene.remove(i.mesh);i.mesh.geometry.dispose();});statusEl.hidden=true;}
+ if(dead&&(key==="r"||key===" ")){dead=false;distance=0;coins=0;hazards.reset();statusEl.hidden=true;}
 }
 window.addEventListener("keydown",e=>{if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"," "].includes(e.key))e.preventDefault();if(!e.repeat)action(e.key);});
 let touchStart:{x:number,y:number}|null=null;
@@ -117,16 +106,12 @@ function frame(){
   camera.position.x=THREE.MathUtils.damp(camera.position.x,laneVisual*0.16,2.8,dt);
   camera.lookAt(camera.position.x*0.25,1.25,-16);
   for(const stripe of stripes){stripe.position.z+=dt*speed;if(stripe.position.z>12)stripe.position.z-=230;}
-  spawnTimer-=dt;
-  if(spawnTimer<=0){spawn();spawnTimer=0.9+Math.random()*0.65;}
-  for(let i=items.length-1;i>=0;i--){
-   const item=items[i];item.z+=dt*speed;item.mesh.position.z=item.z;
-   if(item.kind==="coin")item.mesh.rotation.y+=dt*3;
-   if(item.z>=-0.6&&item.z<=0.6&&item.lane===lane){
-    if(item.kind==="coin"){coins++;scene.remove(item.mesh);item.mesh.geometry.dispose();items.splice(i,1);continue;}
-    if(!jumping){dead=true;statusEl.hidden=false;statusEl.textContent="KOŞU BİTTİ · R İLE TEKRAR";break;}
-   }
-   if(item.z>14){scene.remove(item.mesh);item.mesh.geometry.dispose();items.splice(i,1);}
+  const collision = hazards.update(dt, distance, speed, lane, playerRoot.position.y, slide > 0);
+  coins += collision.coins;
+  if (collision.crashed) {
+    dead = true;
+    statusEl.hidden = false;
+    statusEl.textContent = "KOŞU BİTTİ · R İLE TEKRAR";
   }
   scoreEl.textContent=Math.floor(distance)+" m";
   coinsEl.textContent="● "+coins;
