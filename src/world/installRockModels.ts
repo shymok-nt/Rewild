@@ -1,3 +1,4 @@
+import { validImportedMeshes } from "./validateImportedMeshes";
 import "@babylonjs/loaders/glTF";
 import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
@@ -10,7 +11,7 @@ import type { HarvestNode } from "../game/harvesting";
 export async function installRockModels(scene: Scene, nodes: readonly HarvestNode[]): Promise<void> {
   const result = await SceneLoader.ImportMeshAsync("", "/models/", "rock.glb", scene);
   if (scene.isDisposed) return;
-  const meshes = result.meshes.filter((mesh): mesh is Mesh => mesh instanceof Mesh && mesh.getTotalVertices() > 0);
+  const meshes = validImportedMeshes(result.meshes, "Rock");
   if (!meshes.length) throw new Error("Rock GLB has no renderable meshes");
   const parts = meshes.map(mesh => {
     mesh.computeWorldMatrix(true);
