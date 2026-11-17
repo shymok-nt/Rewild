@@ -98,9 +98,11 @@ let avatar:THREE.Object3D|null=null;
 // Temporary animated model for the GLB pipeline; replace with art-directed human runner.
 const characterUrl="/assets/character.glb";
 let characterLoadFailed=false;
+let characterReady=false;
 loader.load(characterUrl,gltf=>{
   avatar=gltf.scene;
   characterLoadFailed=false;
+  characterReady=true;
   const bounds=new THREE.Box3().setFromObject(avatar);
   const height=Math.max(bounds.max.y-bounds.min.y,0.01);
   avatar.scale.multiplyScalar(2.3/height);
@@ -118,9 +120,12 @@ loader.load(characterUrl,gltf=>{
   if(jumpClip)clips.set("jump",mixer.clipAction(jumpClip));
   if(slideClip)clips.set("slide",mixer.clipAction(slideClip));
   playAnimation("run");
+  restartButton.disabled=false;
+  if(paused && !dead){restartButton.textContent="KOŞUYA BAŞLA";statusEl.textContent="RUSH CITY · SOKAKLAR SENİN!";}
   if (!dead && !paused) statusEl.hidden=true;
 },undefined,()=>{
   characterLoadFailed=true;
+  characterReady=false;
   paused=true;
   pauseButton.textContent="▶";
   restartButton.hidden=true;
@@ -140,7 +145,8 @@ const pickupEffects = new PickupEffects(scene);
 statusEl.hidden=false;
 statusEl.textContent="RUSH CITY · SOKAKLAR SENİN!";
 restartButton.hidden=false;
-restartButton.textContent="KOŞUYA BAŞLA";
+restartButton.textContent="KARAKTER YÜKLENİYOR";
+restartButton.disabled=true;
 pauseButton.textContent="▶";
 function action(key:string){
  if(dead&&key!=="r"&&key!==" ")return;
@@ -149,7 +155,7 @@ function action(key:string){
  if(key==="ArrowRight"||key==="d"){const prev=lane;lane=clampLane(lane+1);if(prev!==lane)audio.lane();}
  if((key==="ArrowUp"||key===" "||key==="w")&&!jumpActive&&slide<=0){jumpActive=true;jumpElapsed=0;audio.jump();}
  if((key==="ArrowDown"||key==="s")&&slide<=0&&!jumpActive){slide=0.72;audio.slide();}
- if((key==="p"||key==="Escape")&&!characterLoadFailed){paused=!paused;pauseButton.textContent=paused?"▶":"Ⅱ";if(!dead){statusEl.hidden=!paused;if(paused)statusEl.textContent="DURAKLATILDI · P İLE DEVAM";else{restartButton.hidden=true;audio.start();}}}
+ if((key==="p"||key==="Escape")&&characterReady&&!characterLoadFailed){paused=!paused;pauseButton.textContent=paused?"▶":"Ⅱ";if(!dead){statusEl.hidden=!paused;if(paused)statusEl.textContent="DURAKLATILDI · P İLE DEVAM";else{restartButton.hidden=true;audio.start();}}}
  if(dead&&(key==="r"||key===" ")){restartButton.hidden=true;restartButton.textContent="YENİDEN OYNA";dead=false;paused=false;pauseButton.textContent="Ⅱ";distance=0;coins=0;lane=0;laneVisual=0;slide=0;jumpActive=false;jumpElapsed=0;hazards.reset();statusEl.hidden=true;audio.start();}
 }
 restartButton.addEventListener("click",()=>{audio.unlock();if(dead)action("r");else if(paused)action("p");});
