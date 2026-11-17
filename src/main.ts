@@ -8,7 +8,7 @@ const game = new Phaser.Game({
   backgroundColor: "#9bd9ff",
   width: 960,
   height: 600,
-  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.NO_CENTER },
   render: { antialias: true, pixelArt: false },
   scene: [RunnerScene],
   fps: { target: 60, forceSetTimeOut: false },
