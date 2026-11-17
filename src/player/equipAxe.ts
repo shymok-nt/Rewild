@@ -14,7 +14,7 @@ export async function equipAxe(
   scene: Scene,
   player: TransformNode,
   _isHarvesting: () => boolean = () => false,
-  getRightHand: () => AbstractMesh | null = () => null,
+  _getRightHand: () => AbstractMesh | null = () => null,
 ): Promise<void> {
   const imported = await SceneLoader.ImportMeshAsync("", "/models/", "Axe.glb", scene);
   if (scene.isDisposed) {
@@ -23,8 +23,10 @@ export async function equipAxe(
   }
   if (!imported.meshes.some(mesh => mesh.getTotalVertices() > 0)) throw new Error("Axe.glb has no visible geometry");
 
-  const handSocket = new TransformNode("RightHandGrip", scene);
-  handSocket.parent = player;
+  // First-person viewmodel: camera-relative, independent of invisible body rig.
+  const handSocket = new TransformNode("first-person-equipment-socket", scene);
+  handSocket.parent = scene.activeCamera ?? player;
+  handSocket.position.set(0.34, -0.32, 0.78);
   const adjust = new TransformNode("axe-grip-adjustment", scene);
   adjust.parent = handSocket;
   const model = new TransformNode("axe-asset-orientation", scene);
@@ -47,17 +49,13 @@ export async function equipAxe(
   );
   model.scaling.setAll(AXE_GRIP.scale);
 
-  let attached: AbstractMesh | null = null;
+  // Preserve the calibrated model rotation/scale, but use a camera-space
+  // position so the tool stays visible and never clips through the torso.
+  adjust.position.set(0, 0, 0);
+  // A subtle harvesting motion without relying on hidden character bones.
   const observer = scene.onBeforeRenderObservable.add(() => {
-    const hand = getRightHand();
-    if (!hand || hand === attached) return;
-    attached = hand;
-    // Follow the animated hand hierarchy directly, never the torso centre.
-    handSocket.parent = hand;
-    const bounds = hand.getBoundingInfo().boundingBox;
-    const palm = bounds.minimum.add(bounds.maximum).scale(0.5);
-    handSocket.position.copyFrom(palm);
-    handSocket.rotation.set(0, 0, 0);
+    const t = _isHarvesting() ? performance.now() * 0.016 : 0;
+    handSocket.rotation.x = _isHarvesting() ? -0.22 + Math.sin(t) * 0.15 : 0;
   });
 
   scene.onDisposeObservable.add(() => {
