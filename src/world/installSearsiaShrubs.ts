@@ -2,6 +2,9 @@ import { validImportedMeshes } from "./validateImportedMeshes";
 import "@babylonjs/loaders/glTF";
 import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
+import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
+import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
+import { Color3 } from "@babylonjs/core/Maths/math.color";
 import { Quaternion, Vector3 } from "@babylonjs/core/Maths/math.vector";
 import type { Scene } from "@babylonjs/core/scene";
 import type { ForestTree } from "./installOakForest";
@@ -45,7 +48,18 @@ export async function installSearsiaShrubs(scene: Scene, trees: readonly ForestT
       mesh.getWorldMatrix().decompose(scale, rotation, position);
       return { mesh, scale, rotation, position };
     });
-    const colonies: { anchor: TransformNode; x: number; z: number }[] = [];
+    // One tiny shared geometry replaces the seven-part high-poly shrub in mid-distance.
+    // The low LOD keeps a green silhouette without submitting all source parts.
+    const lowMaterial = new StandardMaterial("searsia-low-lod-material", scene);
+    lowMaterial.diffuseColor = new Color3(0.25, 0.39, 0.22);
+    lowMaterial.specularColor = Color3.Black();
+    const lowSource = MeshBuilder.CreateSphere("searsia-low-lod-source", {
+      diameter: 1, segments: 5,
+    }, scene);
+    lowSource.material = lowMaterial;
+    lowSource.isVisible = false;
+    lowSource.isPickable = false;
+    const colonies: { anchor: TransformNode; proxy: import("@babylonjs/core/Meshes/instancedMesh").InstancedMesh; x: number; z: number; state: number }[] = [];
     let count = 0;
     const MAX_SHRUBS = 24;
     const plant = (x: number, z: number, scale: number, angle: number) => {
@@ -63,7 +77,13 @@ export async function installSearsiaShrubs(scene: Scene, trees: readonly ForestT
         instance.isPickable = false;
         instance.receiveShadows = false;
       }
-      colonies.push({ anchor, x, z });
+      const proxy = lowSource.createInstance("searsia-low-lod-" + count);
+      proxy.position.set(x, 0.62 * scale, z);
+      proxy.scaling.set(2.1 * scale, 1.8 * scale, 1.9 * scale);
+      proxy.isPickable = false;
+      proxy.receiveShadows = false;
+      proxy.isVisible = false;
+      colonies.push({ anchor, proxy, x, z, state: -1 });
       count++;
     };
     for (let i = 0; i < trees.length && count < MAX_SHRUBS; i++) {
@@ -85,10 +105,10 @@ export async function installSearsiaShrubs(scene: Scene, trees: readonly ForestT
       }
     }
     for (const part of parts) part.mesh.isVisible = false;
-    // Full-detail shrubs render only in the nearby area. Faraway colonies
-    // remain allocated but are disabled so they do not submit GPU draw calls.
-    const ACTIVE_RADIUS_SQ = 30 * 30;
-    const HYSTERESIS_RADIUS_SQ = 35 * 35;
+    // Three states: 0 = near original GLTF, 1 = cheap proxy, 2 = culled.
+    // Hysteresis avoids LOD thrashing when the player hovers at a boundary.
+    const NEAR_IN_SQ = 9 * 9, NEAR_OUT_SQ = 13 * 13;
+    const FAR_IN_SQ = 37 * 37, FAR_OUT_SQ = 42 * 42;
     let elapsed = 1000;
     const observer = scene.onBeforeRenderObservable.add(() => {
       elapsed += Math.min(scene.getEngine().getDeltaTime(), 100);
@@ -96,14 +116,19 @@ export async function installSearsiaShrubs(scene: Scene, trees: readonly ForestT
       elapsed = 0;
       const camera = scene.activeCamera;
       if (!camera) return;
-      const position = camera.globalPosition;
+      const px = camera.globalPosition.x, pz = camera.globalPosition.z;
       for (const colony of colonies) {
-        const dx = colony.x - position.x;
-        const dz = colony.z - position.z;
+        const dx = colony.x - px, dz = colony.z - pz;
         const distanceSq = dx * dx + dz * dz;
-        const active = colony.anchor.isEnabled();
-        if (active && distanceSq > HYSTERESIS_RADIUS_SQ) colony.anchor.setEnabled(false);
-        else if (!active && distanceSq < ACTIVE_RADIUS_SQ) colony.anchor.setEnabled(true);
+        const next = colony.state === 0
+          ? (distanceSq > NEAR_OUT_SQ ? 1 : 0)
+          : colony.state === 1
+            ? (distanceSq < NEAR_IN_SQ ? 0 : distanceSq > FAR_OUT_SQ ? 2 : 1)
+            : (distanceSq < NEAR_IN_SQ ? 0 : distanceSq < FAR_IN_SQ ? 1 : 2);
+        if (next === colony.state) continue;
+        colony.anchor.setEnabled(next === 0);
+        colony.proxy.isVisible = next === 1;
+        colony.state = next;
       }
     });
     scene.onDisposeObservable.addOnce(() => scene.onBeforeRenderObservable.remove(observer));
