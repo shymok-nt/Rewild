@@ -98,7 +98,14 @@ Promise.all([loader.loadAsync("/assets/runner.glb"), loadWorldAssets(scene)])
     runnerModel = gltf.scene;
     runnerModel.traverse(node => {
       if (node.name) joints.set(node.name, node);
-      if (node instanceof THREE.Mesh) node.castShadow = true;
+      if (node instanceof THREE.Mesh) {
+        node.castShadow = true;
+        // Runner is a transform pivot, not a visible body part in the exported GLB.
+        if (node.name === "Runner") {
+          node.geometry = node.geometry.clone();
+          node.geometry.setDrawRange(0, 0);
+        }
+      }
     });
     playerRoot.add(runnerModel);
     updateWorld = update;
