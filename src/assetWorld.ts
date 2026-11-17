@@ -9,8 +9,10 @@ export async function loadWorldAssets(scene: THREE.Scene): Promise<(distance: nu
     loader.loadAsync("/assets/road-segment.glb")
   ]);
   const blocks: THREE.Object3D[] = [];
+  // Extend the recycled city beyond the camera fog limit, so distant blocks fade
+  // into haze before recycling instead of visibly disappearing at the horizon.
   const roads: THREE.Object3D[] = [];
-  for (let i = 0; i < 24; i++) {
+  for (let i = 0; i < 36; i++) {
     const side = i % 2 === 0 ? -1 : 1;
     const model = building.scene.clone(true);
     model.position.set(side * 12.3, 0, 8 - Math.floor(i / 2) * 14);
@@ -20,7 +22,7 @@ export async function loadWorldAssets(scene: THREE.Scene): Promise<(distance: nu
     scene.add(model);
     blocks.push(model);
   }
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 16; i++) {
     const model = road.scene.clone(true);
     model.position.z = 8 - i * 18;
     model.traverse(o => { if (o instanceof THREE.Mesh) o.receiveShadow = true; });
@@ -28,7 +30,7 @@ export async function loadWorldAssets(scene: THREE.Scene): Promise<(distance: nu
     roads.push(model);
   }
   return distance => {
-    const cityCycle = 168;
+    const cityCycle = 18 * 14;
     for (let i = 0; i < blocks.length; i++) {
       const index = Math.floor(i / 2);
       blocks[i].position.z = 8 - ((index * 14 - distance % cityCycle + cityCycle) % cityCycle);
