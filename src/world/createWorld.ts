@@ -47,7 +47,13 @@ export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
   sun.intensity = 1.0;
   sun.diffuse = new Color3(1, 0.98, 0.94);
   sun.shadowMinZ = 1;
-  sun.shadowMaxZ = 65;
+  sun.shadowMaxZ = 75;
+  // Stable, player-centered shadow projection; do not fit the whole 140m map.
+  sun.autoUpdateExtends = false;
+  sun.orthoLeft = -28;
+  sun.orthoRight = 28;
+  sun.orthoTop = 28;
+  sun.orthoBottom = -28;
   const shadows = new ShadowGenerator(1024, sun);
   shadows.usePercentageCloserFiltering = true;
   shadows.filteringQuality = ShadowGenerator.QUALITY_LOW;
@@ -68,8 +74,10 @@ export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
     mesh.name.startsWith("roof-") || mesh.name.startsWith("chimney") ||
     mesh.name.startsWith("fence-")
   );
-  for (const mesh of staticCasters) shadows.addShadowCaster(mesh);
-  const registered = new Set(staticCasters);
+  // Cabin pieces far from the player would expand the shadow projection.
+  // Register them only when nearby, alongside the oak instances.
+  const registered = new Set<import("@babylonjs/core/Meshes/abstractMesh").AbstractMesh>();
+  const nearbyStaticCasters = new Set<import("@babylonjs/core/Meshes/abstractMesh").AbstractMesh>();
   let shadowCheckElapsed = 0;
   // A small moving budget of oak instances casts real shadows near the player.
   // Avoid submitting the entire instanced forest to the 1024px shadow map.
@@ -77,11 +85,25 @@ export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
   const MAX_SHADOW_TREES = 4;
   const SHADOW_RADIUS_SQUARED = 22 * 22;
   scene.onBeforeRenderObservable.add(() => {
+    // Update the light every frame to prevent the shadow map drifting behind.
+    sun.position.set(player.root.position.x + 18, 34, player.root.position.z - 14);
     shadowCheckElapsed += Math.min(engine.getDeltaTime(), 100);
     if (shadowCheckElapsed < 1000) return;
     shadowCheckElapsed = 0;
     const px = player.root.position.x;
     const pz = player.root.position.z;
+    sun.position.set(px + 18, 34, pz - 14);
+    for (const mesh of staticCasters) {
+      const position = mesh.getAbsolutePosition();
+      const nearby = (position.x - px) ** 2 + (position.z - pz) ** 2 < 24 * 24;
+      if (nearby && !nearbyStaticCasters.has(mesh)) {
+        shadows.addShadowCaster(mesh, false);
+        nearbyStaticCasters.add(mesh);
+      } else if (!nearby && nearbyStaticCasters.has(mesh)) {
+        shadows.removeShadowCaster(mesh);
+        nearbyStaticCasters.delete(mesh);
+      }
+    }
     const closest = scene.transformNodes
       .filter(node => node.name === "oak-forest")
       .map(node => {
