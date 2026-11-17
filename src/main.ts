@@ -49,6 +49,7 @@ const loader=new GLTFLoader();
 let mixer:THREE.AnimationMixer|null=null;
 let avatar:THREE.Object3D|null=null;
 let avatarReady=false;
+// Temporary animated model for the GLB pipeline; replace with art-directed human runner.
 const characterUrl="/assets/character.glb";
 loader.load(characterUrl,gltf=>{
   avatar=gltf.scene;
@@ -60,9 +61,10 @@ loader.load(characterUrl,gltf=>{
   avatar.traverse(o=>{if(o instanceof THREE.Mesh){o.castShadow=true;o.receiveShadow=true;}});
   playerRoot.add(avatar);
   mixer=new THREE.AnimationMixer(avatar);
-  const run=gltf.animations.find(a=>/run|jog/i.test(a.name))??gltf.animations[0];
+  const run=gltf.animations.find(a=>/run|jog/i.test(a.name))??gltf.animations.find(a=>/walk/i.test(a.name))??gltf.animations[0];
   if(run)mixer.clipAction(run).play();
   avatarReady=true;
+  statusEl.hidden=true;
 },undefined,()=>{
   statusEl.hidden=false;
   statusEl.textContent="3D karakter modeli henüz kurulmadı: public/assets/character.glb gerekiyor. Sahne hazır, karakter varlığı bekleniyor.";
@@ -119,7 +121,7 @@ function frame(){
    if(item.kind==="coin")item.mesh.rotation.y+=dt*3;
    if(item.z>=-0.6&&item.z<=0.6&&item.lane===lane){
     if(item.kind==="coin"){coins++;scene.remove(item.mesh);item.mesh.geometry.dispose();items.splice(i,1);continue;}
-    if(!jumping&&!slide){dead=true;statusEl.hidden=false;statusEl.textContent="KOŞU BİTTİ · R İLE TEKRAR";break;}
+    if(!jumping){dead=true;statusEl.hidden=false;statusEl.textContent="KOŞU BİTTİ · R İLE TEKRAR";break;}
    }
    if(item.z>14){scene.remove(item.mesh);item.mesh.geometry.dispose();items.splice(i,1);}
   }
