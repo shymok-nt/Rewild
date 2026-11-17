@@ -1,0 +1,73 @@
+import "@babylonjs/loaders/glTF";
+import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
+import { Mesh } from "@babylonjs/core/Meshes/mesh";
+import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
+import { Quaternion, Vector3 } from "@babylonjs/core/Maths/math.vector";
+import type { Scene } from "@babylonjs/core/scene";
+import type { ForestTree } from "./installOakForest";
+
+function rand(a: number, b: number, salt = 0): number {
+  let x = (Math.imul(a, 73856093) ^ Math.imul(b, 19349663) ^ salt) >>> 0;
+  x = Math.imul(x ^ (x >>> 16), 2246822519) >>> 0;
+  return ((x ^ (x >>> 13)) >>> 0) / 4294967296;
+}
+function clear(x: number, z: number): boolean {
+  return Math.abs(x) > 66 || Math.abs(z) > 66 ||
+    (Math.abs(x) < 7 && Math.abs(z) < 10) ||
+    (Math.abs(x + 12) < 10 && Math.abs(z - 46) < 10) ||
+    (z > 6 && z < 60 && Math.abs(x - Math.sin(z * 0.12) * 3) < 4);
+}
+export async function installSearsiaShrubs(scene: Scene, trees: readonly ForestTree[]): Promise<void> {
+  try {
+    const result = await SceneLoader.ImportMeshAsync("", "/models/searsia_lucida/", "searsia_lucida_1k.gltf", scene);
+    if (scene.isDisposed) return;
+    const meshes = result.meshes.filter((mesh): mesh is Mesh => mesh instanceof Mesh && mesh.getTotalVertices() > 0);
+    if (!meshes.length) throw new Error("Searsia glTF has no geometry");
+    const parts = meshes.map(mesh => {
+      mesh.computeWorldMatrix(true);
+      const scale = new Vector3(), rotation = new Quaternion(), position = new Vector3();
+      mesh.getWorldMatrix().decompose(scale, rotation, position);
+      return { mesh, scale, rotation, position };
+    });
+    let count = 0;
+    const MAX_SHRUBS = 95;
+    const plant = (x: number, z: number, scale: number, angle: number) => {
+      if (clear(x, z) || count >= MAX_SHRUBS) return;
+      const anchor = new TransformNode("searsia-shrub-" + count, scene);
+      anchor.position.set(x, 0.015, z);
+      anchor.scaling.setAll(scale);
+      anchor.rotation.y = angle;
+      for (const part of parts) {
+        const instance = part.mesh.createInstance("searsia-part-" + count + "-" + part.mesh.name);
+        instance.parent = anchor;
+        instance.position.copyFrom(part.position);
+        instance.rotationQuaternion = part.rotation.clone();
+        instance.scaling.copyFrom(part.scale);
+        instance.isPickable = false;
+      }
+      count++;
+    };
+    for (let i = 0; i < trees.length && count < MAX_SHRUBS; i++) {
+      if (rand(i, 3) > 0.58) continue;
+      const tree = trees[i];
+      const groups = 1 + (rand(i, 4) > 0.78 ? 1 : 0);
+      for (let g = 0; g < groups; g++) {
+        const a = rand(i, g, 5) * Math.PI * 2;
+        const d = 3.8 + rand(i, g, 6) * 3.8;
+        const cx = tree.x + Math.cos(a) * d;
+        const cz = tree.z + Math.sin(a) * d;
+        const n = 2 + Math.floor(rand(i, g, 7) * 3);
+        for (let j = 0; j < n; j++) {
+          const angle = rand(i * 7 + g, j, 8) * Math.PI * 2;
+          const radius = Math.sqrt(rand(i * 11 + g, j, 9)) * 2.2;
+          plant(cx + Math.cos(angle) * radius, cz + Math.sin(angle) * radius,
+            0.45 + rand(i * 13 + g, j, 10) * 0.38, angle);
+        }
+      }
+    }
+    for (const part of parts) part.mesh.isVisible = false;
+    console.info("[Rewild] Searsia shrubs ready:", count, "plants,", meshes.length, "mesh parts");
+  } catch (error) {
+    console.warn("[Rewild] Searsia shrubs unavailable; keeping existing forest:", error);
+  }
+}
