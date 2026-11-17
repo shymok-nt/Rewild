@@ -7,8 +7,8 @@ import { Matrix, Quaternion, Vector3 } from "@babylonjs/core/Maths/math.vector";
 import type { Scene } from "@babylonjs/core/scene";
 
 /**
- * Visual-only prototype: 16 tufts beside the spawn point.
- * Not a world vegetation system. Approve the appearance before scaling up.
+ * Lightweight nearby 3D grass: one shared mesh and bounded thin instances.
+ * Distant coverage is handled by the meadow texture.
  */
 export function createGrassPrototype(scene: Scene): void {
   const mesh = new Mesh("grass-prototype-source", scene);
@@ -66,21 +66,64 @@ export function createGrassPrototype(scene: Scene): void {
   material.backFaceCulling = false;
   mesh.material = material;
   mesh.isPickable = false;
-  mesh.alwaysSelectAsActiveMesh = true;
+  mesh.alwaysSelectAsActiveMesh = false;
 
-  // Fixed 4x4 preview patch at the right side of the initial player position.
-  const matrices = new Float32Array(16 * 16);
-  for (let i = 0; i < 16; i++) {
-    const x = 6.2 + (i % 4) * 0.48 + (random() - 0.5) * 0.18;
-    const z = 6.2 + Math.floor(i / 4) * 0.48 + (random() - 0.5) * 0.18;
-    const scale = 0.8 + random() * 0.35;
-    Matrix.Compose(
-      new Vector3(scale, scale, scale),
-      Quaternion.RotationAxis(Vector3.Up(), random() * Math.PI * 2),
-      new Vector3(x, 0.02, z),
-    ).copyToArray(matrices, i * 16);
-  }
-  mesh.thinInstanceSetBuffer("matrix", matrices, 16, true);
-  mesh.thinInstanceRefreshBoundingInfo();
-  console.info("[Rewild] Stylized grass prototype: 16 tufts, visual test only");
+  // A capped, deterministic moving window. Never allocate geometry per tuft.
+  // Update only when the player crosses a grid cell, not on camera rotation.
+  const SPACING = 0.52;
+  const RADIUS = 6.5;
+  const MAX_TUFTS = 320;
+  let previousX = Infinity;
+  let previousZ = Infinity;
+  const update = () => {
+    const player = scene.getTransformNodeByName("player-root");
+    const px = player?.position.x ?? 0;
+    const pz = player?.position.z ?? 9;
+    const cellX = Math.floor(px / 1.5);
+    const cellZ = Math.floor(pz / 1.5);
+    if (cellX === previousX && cellZ === previousZ) return;
+    previousX = cellX;
+    previousZ = cellZ;
+    const buffer = new Float32Array(MAX_TUFTS * 16);
+    let count = 0;
+    const centerX = Math.floor(px / SPACING);
+    const centerZ = Math.floor(pz / SPACING);
+    for (let gx = centerX - 13; gx <= centerX + 13; gx++) {
+      for (let gz = centerZ - 13; gz <= centerZ + 13; gz++) {
+        if (count >= MAX_TUFTS) break;
+        let hash = (Math.imul(gx, 73856093) ^ Math.imul(gz, 19349663) ^ 0x51f15e) >>> 0;
+        const rand = () => {
+          hash = (Math.imul(hash, 1664525) + 1013904223) >>> 0;
+          return hash / 4294967296;
+        };
+        const x = gx * SPACING + (rand() - 0.5) * 0.3;
+        const z = gz * SPACING + (rand() - 0.5) * 0.3;
+        if ((x - px) ** 2 + (z - pz) ** 2 > RADIUS * RADIUS) continue;
+        if (Math.abs(x) > 68 || Math.abs(z) > 68) continue;
+        // Preserve the path, cottage, and spawn clearing.
+        if (Math.abs(x) < 4.3 && Math.abs(z) < 7.5) continue;
+        if (Math.abs(x + 12) < 8 && Math.abs(z - 46) < 7) continue;
+        if (z >= 8 && z <= 58 && Math.abs(x - Math.sin(z * 0.12) * 3) < 2.0) continue;
+        const size = 0.72 + rand() * 0.48;
+        Matrix.Compose(
+          new Vector3(size, size, size),
+          Quaternion.RotationAxis(Vector3.Up(), rand() * Math.PI * 2),
+          new Vector3(x, 0.02, z),
+        ).copyToArray(buffer, count * 16);
+        count++;
+      }
+    }
+    mesh.thinInstanceSetBuffer("matrix", buffer.subarray(0, count * 16), 16, true);
+    mesh.thinInstanceRefreshBoundingInfo();
+  };
+  update();
+  let elapsed = 0;
+  const observer = scene.onBeforeRenderObservable.add(() => {
+    elapsed += Math.min(scene.getEngine().getDeltaTime() / 1000, 0.1);
+    if (elapsed < 0.25) return;
+    elapsed = 0;
+    update();
+  });
+  scene.onDisposeObservable.add(() => scene.onBeforeRenderObservable.remove(observer));
+  console.info("[Rewild] Stylized nearby grass enabled, max", MAX_TUFTS, "tufts");
 }
