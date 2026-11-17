@@ -96,6 +96,27 @@ export async function installFernForest(scene: Scene, trees: readonly ForestTree
       }
     }
     for (const part of parts) part.mesh.isVisible = false;
+    // Cheap distance LOD: hide complex imported fern geometry outside
+    // the player's local area. Re-enable only when returning nearby.
+    // A hysteresis band prevents rapid toggling at the boundary.
+    const NEAR_SQ = 20 * 20;
+    const FAR_SQ = 25 * 25;
+    let elapsed = 1000;
+    const observer = scene.onBeforeRenderObservable.add(() => {
+      elapsed += Math.min(scene.getEngine().getDeltaTime(), 100);
+      if (elapsed < 450) return;
+      elapsed = 0;
+      const camera = scene.activeCamera;
+      if (!camera) return;
+      const px = camera.globalPosition.x, pz = camera.globalPosition.z;
+      for (const anchor of anchors) {
+        const dx = anchor.position.x - px, dz = anchor.position.z - pz;
+        const distanceSq = dx * dx + dz * dz;
+        if (anchor.isEnabled() && distanceSq > FAR_SQ) anchor.setEnabled(false);
+        else if (!anchor.isEnabled() && distanceSq < NEAR_SQ) anchor.setEnabled(true);
+      }
+    });
+    scene.onDisposeObservable.addOnce(() => scene.onBeforeRenderObservable.remove(observer));
     console.info("[Rewild] Fern 02 natural colonies ready:", count, "plants");
   } catch (error) {
     console.warn("[Rewild] Fern 02 unavailable; forest remains playable:", error);
