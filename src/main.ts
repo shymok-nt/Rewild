@@ -24,7 +24,7 @@ const audio = new GameAudio();
 soundButton.textContent = audio.isMuted ? "♪̸" : "♫";
 soundButton.addEventListener("click",()=>{audio.setMuted(!audio.isMuted);soundButton.textContent=audio.isMuted?"♪̸":"♫";audio.unlock();});
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.25));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -42,7 +42,7 @@ scene.add(new THREE.HemisphereLight(0xf4f9ff, 0x768b9b, 2.2));
 const sun = new THREE.DirectionalLight(0xffefd2, 2.6);
 sun.position.set(-9, 18, 7);
 sun.castShadow = true;
-sun.shadow.mapSize.set(1024, 1024);
+sun.shadow.mapSize.set(512, 512);
 sun.shadow.camera.left = -22; sun.shadow.camera.right = 22;
 sun.shadow.camera.top = 25; sun.shadow.camera.bottom = -25;
 scene.add(sun);
@@ -168,8 +168,9 @@ function frame(){
  if(frameSeconds>=3){
   const fps=frameCount/frameSeconds;
   const pixelRatio=renderer.getPixelRatio();
+  if(fps<29 && renderer.shadowMap.enabled){renderer.shadowMap.enabled=false;renderer.shadowMap.needsUpdate=true;}
   if(qualityCooldown===0&&fps<38&&pixelRatio>0.85){renderer.setPixelRatio(Math.max(0.85,pixelRatio-0.2));resize();qualityCooldown=8;}
-  else if(qualityCooldown===0&&fps>58&&pixelRatio<Math.min(devicePixelRatio,1.5)){renderer.setPixelRatio(Math.min(Math.min(devicePixelRatio,1.5),pixelRatio+0.1));resize();qualityCooldown=8;}
+  else if(qualityCooldown===0&&fps>58&&pixelRatio<Math.min(devicePixelRatio,1.25)){renderer.setPixelRatio(Math.min(Math.min(devicePixelRatio,1.5),pixelRatio+0.1));resize();qualityCooldown=8;}
   frameCount=0;frameSeconds=0;
  }
  if(!paused&&!dead){
