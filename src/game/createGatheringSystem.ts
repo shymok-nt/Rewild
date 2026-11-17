@@ -8,17 +8,66 @@ import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import type { PlayerController } from "../player/createPlayer";
 import type { Footprint } from "../world/collision";
 import type { HarvestNode } from "./harvesting";
+import type { ForestTree } from "../world/installOakForest";
 
-export function createGatheringSystem(scene: Scene, player: PlayerController, obstacles: Footprint[]): HarvestNode[] {
+export function createGatheringSystem(scene: Scene, player: PlayerController, obstacles: Footprint[], forestTrees: readonly ForestTree[] = []): HarvestNode[] {
   const inventory = new Inventory();
   const nodes = createHarvestNodes(scene);
+  // Convert every placed forest tree and boulder into a harvestable resource.
+  // Their GLB instances will be parented to these lightweight visual anchors.
+  const rockMeshes = scene.meshes.filter(mesh => /^rock-\\d+$/.test(mesh.name));
+  const extraResources: { kind: "wood" | "stone"; x: number; z: number; id: string }[] = [
+    ...forestTrees.map((tree, i) => ({ kind: "wood" as const, x: tree.x, z: tree.z, id: "forest-" + i })),
+    ...rockMeshes.map((rock, i) => ({ kind: "stone" as const, x: rock.position.x, z: rock.position.z, id: "boulder-" + i })),
+  ];
+  for (const item of extraResources) {
+    const visual = MeshBuilder.CreateBox("resource-anchor-" + item.id, { size: 0.01 }, scene);
+    visual.position.set(item.x, 0, item.z);
+    visual.isVisible = false;
+    visual.isPickable = false;
+    nodes.push({
+      id: item.id,
+      kind: item.kind,
+      label: item.kind === "wood" ? "Ağaç" : "Taş",
+      position: new Vector3(item.x, 0, item.z),
+      remaining: item.kind === "wood" ? 5 : 4,
+      maximum: item.kind === "wood" ? 5 : 4,
+      cooldownUntil: 0,
+      visual,
+      baseScale: visual.scaling.clone(),
+      hitUntil: 0,
+    });
+  }
   const resourceColliders = new Map<string, Footprint>();
   for (const node of nodes) {
+    const existing = obstacles.find(c => Math.abs(c.x - node.position.x) < 0.01 && Math.abs(c.z - node.position.z) < 0.01);
     const radius = node.kind === "wood" ? 0.9 : 0.65;
-    const footprint: Footprint = { x: node.position.x, z: node.position.z, halfWidth: radius, halfDepth: radius };
-    obstacles.push(footprint);
+    const footprint: Footprint = existing ?? { x: node.position.x, z: node.position.z, halfWidth: radius, halfDepth: radius };
+    if (!existing) obstacles.push(footprint);
     resourceColliders.set(node.id, footprint);
   }
+  // Stable pseudo-random spawn selection, constrained to playable meadow.
+  let spawnSeed = 0x42f0a1;
+  const random = () => {
+    spawnSeed = (Math.imul(spawnSeed, 1664525) + 1013904223) >>> 0;
+    return spawnSeed / 4294967296;
+  };
+  const findSpawn = (node: HarvestNode): Vector3 | null => {
+    for (let attempt = 0; attempt < 120; attempt++) {
+      const x = (random() - 0.5) * 124;
+      const z = (random() - 0.5) * 124;
+      if (Math.hypot(x - player.root.position.x, z - player.root.position.z) < 15) continue;
+      if (Math.abs(x) < 7 && Math.abs(z) < 10) continue;
+      if (Math.abs(x + 12) < 10 && Math.abs(z - 46) < 9) continue;
+      if (z >= 7 && z <= 60 && Math.abs(x - Math.sin(z * 0.12) * 3) < 7) continue;
+      if (nodes.some(other => other !== node && other.remaining > 0 &&
+        Math.hypot(x - other.position.x, z - other.position.z) < (node.kind === "wood" || other.kind === "wood" ? 9 : 4))) continue;
+      if (obstacles.some(c => c !== resourceColliders.get(node.id) &&
+        Math.abs(x - c.x) < c.halfWidth + 2 && Math.abs(z - c.z) < c.halfDepth + 2)) continue;
+      return new Vector3(x, 0, z);
+    }
+    return null;
+  };
   const panel = document.createElement("section");
   panel.id = "rewild-inventory";
   panel.setAttribute("aria-label", "Envanter");
@@ -99,8 +148,8 @@ export function createGatheringSystem(scene: Scene, player: PlayerController, ob
         const index = obstacles.indexOf(collider);
         if (index >= 0) obstacles.splice(index, 1);
       }
-      // Depleted nodes regenerate after 30 seconds, preserving gameplay availability.
-      target.cooldownUntil = performance.now() + 30000;
+      // Respawn elsewhere after a staggered cooldown; reuse the same GLB instances.
+      target.cooldownUntil = performance.now() + 25000 + random() * 20000;
     }
   };
   window.addEventListener("keydown", onKeyDown);
@@ -124,10 +173,23 @@ export function createGatheringSystem(scene: Scene, player: PlayerController, ob
         if (now < node.hitUntil) node.visual.scaling.scaleInPlace(0.91);
       }
       if (node.remaining === 0 && now >= node.cooldownUntil) {
+        const spawn = findSpawn(node);
+        if (!spawn) {
+          node.cooldownUntil = now + 5000;
+          continue;
+        }
+        node.position.copyFrom(spawn);
+        // Special resource visuals have an original local height offset.
+        node.visual.position.x = spawn.x;
+        node.visual.position.z = spawn.z;
         node.remaining = node.maximum;
         node.visual.setEnabled(true);
         const collider = resourceColliders.get(node.id);
-        if (collider && !obstacles.includes(collider)) obstacles.push(collider);
+        if (collider) {
+          collider.x = spawn.x;
+          collider.z = spawn.z;
+          if (!obstacles.includes(collider)) obstacles.push(collider);
+        }
       }
     }
     const target = nearestHarvestNode(nodes, player.root.position);
