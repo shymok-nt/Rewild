@@ -296,3 +296,13 @@ Her önemli geliştirme sonrasında bu bölümün altına tarih, değişen dosya
 - Commits: `95e9c30a` (runner implementation), `b6513960` (runtime integration).
 - This is an original procedural articulated character, **not** a professional skinned/skeletal GLB with authored animation clips. A polished artist-made character remains a future quality goal.
 - **Validation:** Browser animation, TypeScript compilation, CI and AMD FPS have not yet been verified for this change. Inspect foot-ground alignment, collision with overhead gates, sliding silhouette and character facing direction in browser.
+
+
+#### 2026-11-18 — GLB-based runner, buildings and road
+
+- Added **actual binary GLB files** at `public/assets/runner.glb`, `public/assets/building.glb`, `public/assets/road-segment.glb` (commit `611b4e90`). These are original lightweight box-mesh assets constructed offline and committed to GitHub; **they were not downloaded from an external marketplace**. No third-party model licenses are involved.
+- Added `src/assetWorld.ts` to load, clone and recycle GLB buildings and road segments; replaced procedural city/road model creation in `src/main.ts`. Existing street furniture, effects, and sky still use Three.js geometry.
+- Replaced runtime procedural human mesh with GLB character. Named GLB parts are animated at runtime for run/jump/slide; **these are not authored skeletal animation clips**. Model loading gates the Start button.
+- Main integration commits `426f4593`, `8b296a6b`, `5536fecd`.
+- The new GLBs are **simple low-poly assets, not premium downloaded models**. They should be replaced with professional licensed assets when source, redistribution rights and accessible binary downloads can be verified.
+- Validation: CI and browser playtesting must be checked for the latest integration commit. Visual facing, joints, road seams, shadows and target AMD FPS remain unverified.
