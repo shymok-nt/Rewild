@@ -36,7 +36,6 @@ export function buildEnvironment(scene: Scene, forestTrees: ForestTree[] = []): 
   const obstacles: Footprint[] = [];
   const random = seeded(40217);
   const meadow = material(scene, "meadow-green", "#526D4B");
-  const grassLight = material(scene, "grass-light", "#627D56");
   const soil = material(scene, "footpath", "#88785D");
   const bark = material(scene, "pine-bark", "#584738");
   const pineDark = material(scene, "pine-dark", "#355D49");
@@ -187,7 +186,7 @@ export function buildEnvironment(scene: Scene, forestTrees: ForestTree[] = []): 
   sources.forEach((source, index) => {
     source.thinInstanceSetBuffer("matrix", new Float32Array(transforms[index]), 16);
     source.isPickable = false;
-    source.alwaysSelectAsActiveMesh = true;
+    source.alwaysSelectAsActiveMesh = false;
   });
 
   // Pebbles and boulders.
@@ -212,17 +211,22 @@ export function buildEnvironment(scene: Scene, forestTrees: ForestTree[] = []): 
   }
   rockBase.isVisible = false;
 
-  // Flower and grass clusters: compact, deterministic and inexpensive.
-  for (let i = 0; i < 150; i++) {
-    const x = (random() - 0.5) * 115;
-    const z = (random() - 0.5) * 115;
+  // Old 150 individual cone tufts removed. The dedicated vegetation mesh
+  // supplies nearby grass; the meadow texture supplies distant coverage.
+  // Keep a handful of flowers without a forest of extra draw calls.
+  const flowerSource = MeshBuilder.CreateCylinder("wildflower-source", {
+    height: 0.28, diameterTop: 0.04, diameterBottom: 0.10, tessellation: 4,
+  }, scene);
+  flowerSource.material = flowers[0];
+  for (let i = 0; i < 12; i++) {
+    const x = (random() - 0.5) * 105;
+    const z = (random() - 0.5) * 105;
     if (Math.abs(x) < 6 && Math.abs(z) < 8) continue;
-    const tuft = MeshBuilder.CreateCylinder("wildflower", {
-      height: 0.24 + random() * 0.25, diameterTop: 0.04, diameterBottom: 0.32, tessellation: 4,
-    }, scene);
-    tuft.position.set(x, 0.16, z);
-    tuft.material = random() < 0.28 ? flowers[Math.floor(random() * flowers.length)] : grassLight;
+    const flower = flowerSource.createInstance("wildflower-" + i);
+    flower.position.set(x, 0.15, z);
+    flower.isPickable = false;
   }
+  flowerSource.isVisible = false;
 
   // Central abandoned cottage with an actual dark doorway and readable silhouette.
   obstacles.push({ x: 0, z: 0, halfWidth: 3.5, halfDepth: 2.9 });
