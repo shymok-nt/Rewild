@@ -73,7 +73,7 @@ export function createGrassPrototype(scene: Scene): void {
   // Update only when the player crosses a grid cell, not on camera rotation.
   const SPACING = 0.72;
   const RADIUS = 9;
-  const MAX_TUFTS = 220;
+  const MAX_TUFTS = 320;
   let previousX = Infinity;
   let previousZ = Infinity;
   const update = () => {
@@ -86,12 +86,11 @@ export function createGrassPrototype(scene: Scene): void {
     previousX = cellX;
     previousZ = cellZ;
     const buffer = new Float32Array(MAX_TUFTS * 16);
-    let count = 0;
+    const candidates: { x: number; z: number; distance: number; rotation: number; scale: number }[] = [];
     const centerX = Math.floor(px / SPACING);
     const centerZ = Math.floor(pz / SPACING);
     for (let gx = centerX - 13; gx <= centerX + 13; gx++) {
       for (let gz = centerZ - 13; gz <= centerZ + 13; gz++) {
-        if (count >= MAX_TUFTS) break;
         let hash = (Math.imul(gx, 73856093) ^ Math.imul(gz, 19349663) ^ 0x51f15e) >>> 0;
         const rand = () => {
           hash = (Math.imul(hash, 1664525) + 1013904223) >>> 0;
@@ -102,21 +101,29 @@ export function createGrassPrototype(scene: Scene): void {
         const distance = Math.hypot(x - px, z - pz);
         if (distance > RADIUS) continue;
         // Deterministic sparse distribution avoids a solid dark circular carpet.
-        if (rand() > 0.56) continue;
+        if (rand() > 0.64) continue;
         if (Math.abs(x) > 68 || Math.abs(z) > 68) continue;
         // Preserve the path, cottage, and spawn clearing.
         if (Math.abs(x) < 4.3 && Math.abs(z) < 7.5) continue;
         if (Math.abs(x + 12) < 8 && Math.abs(z - 46) < 7) continue;
         if (z >= 8 && z <= 58 && Math.abs(x - Math.sin(z * 0.12) * 3) < 2.0) continue;
-        const fade = Math.min(1, Math.max(0.08, (RADIUS - distance) / 3.5));
-        const size = (0.48 + rand() * 0.37) * fade;
-        Matrix.Compose(
-          new Vector3(size, size, size),
-          Quaternion.RotationAxis(Vector3.Up(), rand() * Math.PI * 2),
-          new Vector3(x, 0.02, z),
-        ).copyToArray(buffer, count * 16);
-        count++;
+        // Collect first, then choose nearest: scan-order capping previously
+        // produced uneven, abruptly cut-off grass around the player.
+        candidates.push({ x, z, distance, rotation: rand() * Math.PI * 2,
+          scale: 0.58 + rand() * 0.42 });
       }
+    }
+    candidates.sort((a, b) => a.distance - b.distance);
+    let count = 0;
+    for (const candidate of candidates.slice(0, MAX_TUFTS)) {
+      const fade = Math.min(1, Math.max(0.02, (RADIUS - candidate.distance) / 3.2));
+      const size = candidate.scale * fade;
+      Matrix.Compose(
+        new Vector3(size, size, size),
+        Quaternion.RotationAxis(Vector3.Up(), candidate.rotation),
+        new Vector3(candidate.x, 0.02, candidate.z),
+      ).copyToArray(buffer, count * 16);
+      count++;
     }
     mesh.thinInstanceSetBuffer("matrix", buffer.subarray(0, count * 16), 16, true);
     mesh.thinInstanceRefreshBoundingInfo();
