@@ -28,7 +28,14 @@ export async function installSearsiaShrubs(scene: Scene, trees: readonly ForestT
       const response = await fetch(localRoot + "searsia_lucida_1k.gltf", { method: "HEAD" });
       if (!response.ok) root = remoteRoot;
     } catch { root = remoteRoot; }
-    const result = await SceneLoader.ImportMeshAsync("", root, "searsia_lucida_1k.gltf", scene);
+    let result;
+    try {
+      result = await SceneLoader.ImportMeshAsync("", root, "searsia_lucida_1k.gltf", scene);
+    } catch (error) {
+      if (root === remoteRoot) throw error;
+      console.warn("[Rewild] Local Searsia assets incomplete; retrying Poly Haven source");
+      result = await SceneLoader.ImportMeshAsync("", remoteRoot, "searsia_lucida_1k.gltf", scene);
+    }
     if (scene.isDisposed) return;
     const meshes = validImportedMeshes(result.meshes, "Searsia");
     if (!meshes.length) throw new Error("Searsia glTF has no geometry");
