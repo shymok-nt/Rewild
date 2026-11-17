@@ -114,5 +114,5 @@ export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: r
     if (canvas && document.pointerLockElement === canvas) document.exitPointerLock();
     model?.dispose();
   });
-  return { root, harvest: () => { harvestUntil = performance.now() + 550; }, isHarvesting: () => performance.now() < harvestUntil };
+  return { root, harvest: () => { harvestUntil = performance.now() + 550; }, isHarvesting: () => performance.now() < harvestUntil, getRightHand: () => model?.rightHand ?? null };
 }
