@@ -12,6 +12,7 @@ import { installOakForest } from "./installOakForest";
 import type { ForestTree } from "./installOakForest";
 import { installRockModels } from "./installRockModels";
 import { equipAxe } from "../player/equipAxe";
+import { createGrassPrototype } from "./createGrassPrototype";
 
 export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
   const scene = new Scene(engine);
@@ -33,6 +34,7 @@ export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
 
   const forestTrees: ForestTree[] = [];
   const obstacles = buildEnvironment(scene, forestTrees);
+  createGrassPrototype(scene);
   const player = createPlayer(scene, camera, obstacles);
   const harvestNodes = createGatheringSystem(scene, player, obstacles);
   void equipAxe(scene, player.root, player.isHarvesting).catch(error => console.warn("Axe asset unavailable:", error));
