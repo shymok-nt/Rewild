@@ -34,7 +34,10 @@ export async function installGrassPatches(scene: Scene, forest: readonly ForestT
   const center = new Vector3((min.x + max.x) / 2, min.y, (min.z + max.z) / 2);
   // Generate coverage for the entire 140 x 140 meadow, not just the spawn.
   // Only a bounded set near the player is ever uploaded to the GPU.
-  const visibleLimit = Math.min(1500, Math.max(80, Math.floor(2400000 / Math.max(vertices, 1))));
+  const visibleLimit = Math.min(420, Math.max(48, Math.floor(900000 / Math.max(vertices, 1))));
+  let activeLimit = visibleLimit;
+  let fpsAverage = 60;
+  let qualityCooldown = 0;
   const cellSize = 1.65;
   let state = 745123;
   const random = () => {
@@ -74,6 +77,7 @@ export async function installGrassPatches(scene: Scene, forest: readonly ForestT
     part.mesh.alwaysSelectAsActiveMesh = true;
   }
 
+  let forceUpdate = true;
   let previousX = Infinity;
   let previousZ = Infinity;
   const update = () => {
@@ -81,18 +85,19 @@ export async function installGrassPatches(scene: Scene, forest: readonly ForestT
     const target = scene.getTransformNodeByName("player-root");
     const x = target?.position.x ?? 0;
     const z = target?.position.z ?? 9;
-    if (Math.hypot(x - previousX, z - previousZ) < 1.5) return;
+    if (Math.hypot(x - previousX, z - previousZ) < 1.5 && !forceUpdate) return;
+    forceUpdate = false;
     previousX = x;
     previousZ = z;
     // Keep a fully populated local patch rather than sparse dots spread over 34m.
     // Larger source models use a smaller radius to stay inside the GPU budget.
-    const radius = Math.min(27, Math.max(8, Math.sqrt(visibleLimit / Math.PI) * cellSize * 0.88));
+    const radius = Math.min(27, Math.max(8, Math.sqrt(activeLimit / Math.PI) * cellSize * 0.88));
     const radiusSquared = radius * radius;
     const visible = candidates
       .filter(patch => (patch.x - x) ** 2 + (patch.z - z) ** 2 < radiusSquared)
       .sort((a, b) => ((a.x - x) ** 2 + (a.z - z) ** 2) -
         ((b.x - x) ** 2 + (b.z - z) ** 2))
-      .slice(0, visibleLimit);
+      .slice(0, activeLimit);
     for (const part of parts) {
       const matrices = new Float32Array(visible.length * 16);
       visible.forEach((patch, i) => {
@@ -104,7 +109,19 @@ export async function installGrassPatches(scene: Scene, forest: readonly ForestT
   update();
   let elapsed = 0;
   const observer = scene.onBeforeRenderObservable.add(() => {
-    elapsed += Math.min(scene.getEngine().getDeltaTime() / 1000, 0.1);
+    const dt = Math.min(scene.getEngine().getDeltaTime() / 1000, 0.1);
+    elapsed += dt;
+    qualityCooldown += dt;
+    if (dt > 0) fpsAverage = fpsAverage * 0.95 + Math.min(100, 1 / dt) * 0.05;
+    if (qualityCooldown >= 3) {
+      qualityCooldown = 0;
+      const nextLimit = fpsAverage < 42 ? Math.max(32, Math.floor(activeLimit * 0.78))
+        : fpsAverage > 57 ? Math.min(visibleLimit, Math.ceil(activeLimit * 1.08)) : activeLimit;
+      if (nextLimit !== activeLimit) {
+        activeLimit = nextLimit;
+        forceUpdate = true;
+      }
+    }
     if (elapsed < 0.4) return;
     elapsed = 0;
     update();
