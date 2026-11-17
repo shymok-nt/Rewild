@@ -54,8 +54,8 @@ export function createCity(scene: THREE.Scene): (distance: number) => void {
         for (let col = -1; col <= 1; col++) {
           const z = col * 2.1;
           const y = floor * 2.2 + 0.55;
-          set(frameBatch, n, frontX - side * 0.03, y, z, 0.14, 1.55, 1.45);
-          set(glassBatch, n, frontX - side * 0.13, y, z, 0.15, 1.25, 1.15);
+          set(frameBatch, n, frontX - side * 0.14, y, z, 0.14, 1.55, 1.45);
+          set(glassBatch, n, frontX - side * 0.17, y, z, 0.15, 1.25, 1.15);
           set(sillBatch, n, frontX - side * 0.2, y - 0.72, z, 0.22, 0.16, 1.55);
           n++;
         }
