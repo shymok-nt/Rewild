@@ -189,6 +189,17 @@ export class RunnerScene extends Phaser.Scene {
       g.fillStyle(0xd9e7f4, 0.7);
       for (let j = 0; j < 3; j++) g.fillRect(x + 6 + j * 9, HORIZON - height + 10, 4, 7);
     }
+    // Parallax cloud layers: distant clouds move slower than the street.
+    for (let i = 0; i < 9; i++) {
+      const drift = (this.distance * (0.25 + (i % 3) * 0.12)) % (W + 180);
+      const x = ((i * 167 - drift + W + 180) % (W + 180)) - 90;
+      const y = 26 + (i * 41) % 98;
+      const radius = 16 + (i % 4) * 6;
+      g.fillStyle(0xffffff, 0.32 + (i % 3) * 0.1);
+      g.fillEllipse(x, y, radius * 3.2, radius * 0.9);
+      g.fillCircle(x - radius * 0.6, y - 5, radius * 0.8);
+      g.fillCircle(x + radius * 0.4, y - 8, radius);
+    }
     g.fillStyle(0x78b78b);
     g.fillRect(0, HORIZON, W, H - HORIZON);
 
