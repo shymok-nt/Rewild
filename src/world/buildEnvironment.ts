@@ -131,6 +131,22 @@ export function buildEnvironment(scene: Scene, forestTrees: ForestTree[] = []): 
   left.push(last.add(normal.scale(1.65)));
   right.push(last.subtract(normal.scale(1.65)));
   const path = MeshBuilder.CreateRibbon("continuous-footpath", { pathArray: [left, right], sideOrientation: Mesh.DOUBLESIDE }, scene);
+  // Ribbon UVs are generated along the entire curve, not from its world-space
+  // bounding box. U spans the path width; V follows cumulative path length.
+  const pathUvs: number[] = [];
+  let pathLength = 0;
+  for (let i = 0; i < left.length; i++) {
+    if (i > 0) pathLength += Vector3.Distance(left[i], left[i - 1]);
+    pathUvs.push(0, pathLength / 2.6);
+  }
+  pathLength = 0;
+  for (let i = 0; i < right.length; i++) {
+    if (i > 0) pathLength += Vector3.Distance(right[i], right[i - 1]);
+    pathUvs.push(1, pathLength / 2.6);
+  }
+  path.setVerticesData("uv", pathUvs, true);
+  pathColor.uScale = 1;
+  pathColor.vScale = 1;
   path.material = pathMaterial;
 
   // Optimized interpretation of the custom stylized pine: a tapered trunk and
