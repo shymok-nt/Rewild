@@ -11,6 +11,29 @@ export function createCity(scene: THREE.Scene): (distance: number) => void {
   const leaves = new THREE.MeshStandardMaterial({ color: 0x4c987a, roughness: 0.95 });
   const trunk = new THREE.MeshStandardMaterial({ color: 0x88654e, roughness: 1 });
   const blocks: THREE.Group[] = [];
+  const shopNames = ["LUMI", "MOTION", "ORBIT", "SUNSET", "SODA", "NOVA"];
+  const shopColors = ["#314b73", "#2d766f", "#af5e65", "#7e6398", "#d28048", "#426e92"];
+  const shopSigns = shopNames.map((name,index)=>{
+    const canvas=document.createElement("canvas");
+    canvas.width=512;canvas.height=128;
+    const ctx=canvas.getContext("2d")!;
+    ctx.fillStyle=shopColors[index];
+    ctx.fillRect(0,0,512,128);
+    ctx.fillStyle="rgba(255,255,255,.16)";
+    ctx.fillRect(13,13,486,102);
+    ctx.strokeStyle="#f5e9d7";
+    ctx.lineWidth=5;
+    ctx.strokeRect(8,8,496,112);
+    ctx.fillStyle="#fff6e5";
+    ctx.textAlign="center";
+    ctx.textBaseline="middle";
+    ctx.font="900 67px Arial,sans-serif";
+    ctx.fillText(name,256,65);
+    const texture=new THREE.CanvasTexture(canvas);
+    texture.colorSpace=THREE.SRGBColorSpace;
+    texture.anisotropy=4;
+    return new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide});
+  });
   const box = new THREE.BoxGeometry(1, 1, 1);
   const sphere = new THREE.IcosahedronGeometry(1, 1);
   function block(parent: THREE.Group, material: THREE.Material, x: number, y: number, z: number, w: number, h: number, d: number): void {
@@ -69,6 +92,10 @@ export function createCity(scene: THREE.Scene): (distance: number) => void {
     }
     block(group, trim, frontX - side * 0.35, 2.3, 0, 0.65, 0.24, 4.5);
     block(group, roof, frontX - side * 0.35, 2.1, 0, 0.7, 0.16, 4.4);
+    const sign=new THREE.Mesh(new THREE.PlaneGeometry(3.55,0.85),shopSigns[i%shopSigns.length]);
+    sign.rotation.y=side===-1?Math.PI/2:-Math.PI/2;
+    sign.position.set(frontX-side*0.47,2.83,0);
+    group.add(sign);
     const tree = new THREE.Mesh(sphere, leaves);
     tree.position.set(side * 7.8, 3.6, 0);
     tree.scale.set(1.35, 1.8, 1.3);
