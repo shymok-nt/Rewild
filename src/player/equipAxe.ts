@@ -45,7 +45,7 @@ export async function equipAxe(scene: Scene, player: TransformNode, isHarvesting
   content.position.set(-grip.x * scale, grip.z * scale, -grip.y * scale);
   // Small procedural grip movement; keep the axe attached to the player's hand
   // instead of a fixed, oversized object beside the torso.
-  const HAND_CARRY_ROTATION = new Vector3(0.12, -0.12, 0.22);
+  const CARRY_ANGLE = new Vector3(0.16, -0.08, -0.28);
   let elapsed = 0;
   let attachedHand: import("@babylonjs/core/Meshes/abstractMesh").AbstractMesh | null = null;
   const observer = scene.onBeforeRenderObservable.add(() => {
@@ -54,8 +54,17 @@ export async function equipAxe(scene: Scene, player: TransformNode, isHarvesting
     if (hand && hand !== attachedHand) {
       attachedHand = hand;
       anchor.parent = hand;
-      anchor.position.set(-0.16, -0.09, 0.12);
-      anchor.rotation.copyFrom(HAND_CARRY_ROTATION);
+      // The Hand_R node origin is not necessarily the centre of the palm.
+      // Derive a socket from its actual mesh geometry, then move it outward.
+      const bounds = hand.getBoundingInfo().boundingBox;
+      const palm = bounds.minimum.add(bounds.maximum).scale(0.5);
+      const width = Math.abs(bounds.maximum.x - bounds.minimum.x);
+      anchor.position.set(
+        palm.x - Math.max(0.035, width * 0.35),
+        palm.y,
+        palm.z + 0.055
+      );
+      anchor.rotation.copyFrom(CARRY_ANGLE);
       console.info("[Rewild] Axe attached to animated Hand_R");
     }
     const chopping = isHarvesting();
