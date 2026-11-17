@@ -45,6 +45,7 @@ export async function installSearsiaShrubs(scene: Scene, trees: readonly ForestT
       mesh.getWorldMatrix().decompose(scale, rotation, position);
       return { mesh, scale, rotation, position };
     });
+    const colonies: { anchor: TransformNode; x: number; z: number }[] = [];
     let count = 0;
     const MAX_SHRUBS = 24;
     const plant = (x: number, z: number, scale: number, angle: number) => {
@@ -62,6 +63,7 @@ export async function installSearsiaShrubs(scene: Scene, trees: readonly ForestT
         instance.isPickable = false;
         instance.receiveShadows = false;
       }
+      colonies.push({ anchor, x, z });
       count++;
     };
     for (let i = 0; i < trees.length && count < MAX_SHRUBS; i++) {
@@ -83,6 +85,28 @@ export async function installSearsiaShrubs(scene: Scene, trees: readonly ForestT
       }
     }
     for (const part of parts) part.mesh.isVisible = false;
+    // Full-detail shrubs render only in the nearby area. Faraway colonies
+    // remain allocated but are disabled so they do not submit GPU draw calls.
+    const ACTIVE_RADIUS_SQ = 30 * 30;
+    const HYSTERESIS_RADIUS_SQ = 35 * 35;
+    let elapsed = 1000;
+    const observer = scene.onBeforeRenderObservable.add(() => {
+      elapsed += Math.min(scene.getEngine().getDeltaTime(), 100);
+      if (elapsed < 350) return;
+      elapsed = 0;
+      const camera = scene.activeCamera;
+      if (!camera) return;
+      const position = camera.globalPosition;
+      for (const colony of colonies) {
+        const dx = colony.x - position.x;
+        const dz = colony.z - position.z;
+        const distanceSq = dx * dx + dz * dz;
+        const active = colony.anchor.isEnabled();
+        if (active && distanceSq > HYSTERESIS_RADIUS_SQ) colony.anchor.setEnabled(false);
+        else if (!active && distanceSq < ACTIVE_RADIUS_SQ) colony.anchor.setEnabled(true);
+      }
+    });
+    scene.onDisposeObservable.addOnce(() => scene.onBeforeRenderObservable.remove(observer));
     console.info("[Rewild] Searsia shrubs ready:", count, "plants,", meshes.length, "mesh parts");
   } catch (error) {
     console.warn("[Rewild] Searsia shrubs unavailable; keeping existing forest:", error);
