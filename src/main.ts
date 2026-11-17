@@ -103,9 +103,10 @@ function animateRunner(dt: number, pose: "run" | "jump" | "slide", speed: number
   }
 }
 let assetsReady = false;
-Promise.all([loader.loadAsync("/assets/real-runner.glb"), loadWorldAssets(scene)])
+Promise.all([loader.loadAsync("/assets/run-maya-3d-person-animated.glb"), loadWorldAssets(scene)])
   .then(([gltf, update]) => {
     runnerModel = gltf.scene;
+    // Maya uses a skinned skeleton and a native Run animation.
     const bounds = new THREE.Box3().setFromObject(runnerModel);
     const height = Math.max(0.01, bounds.max.y - bounds.min.y);
     const scale = 2.25 / height;
@@ -115,17 +116,15 @@ Promise.all([loader.loadAsync("/assets/real-runner.glb"), loadWorldAssets(scene)
     runnerModel.position.y = runnerBaseY;
     if (gltf.animations.length > 0) {
       runnerMixer = new THREE.AnimationMixer(runnerModel);
-      runnerMixer.clipAction(gltf.animations[0]).play();
+      const runClip = gltf.animations.find(clip => clip.name.toLowerCase().includes("run")) ?? gltf.animations[0];
+      runnerMixer.clipAction(runClip).play();
     }
+    // Keep the imported character facing the road; source models vary in forward axis.
+    runnerModel.rotation.y = Math.PI;
     runnerModel.traverse(node => {
       if (node.name) joints.set(node.name, node);
       if (node instanceof THREE.Mesh) {
         node.castShadow = true;
-        // Runner is a transform pivot, not a visible body part in the exported GLB.
-        if (!runnerMixer && node.name === "Runner") {
-          node.geometry = node.geometry.clone();
-          node.geometry.setDrawRange(0, 0);
-        }
       }
     });
     playerRoot.add(runnerModel);
