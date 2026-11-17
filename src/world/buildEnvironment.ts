@@ -4,6 +4,7 @@ import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import "@babylonjs/core/Meshes/instancedMesh";
 import "@babylonjs/core/Meshes/thinInstanceMesh";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
+import { DynamicTexture } from "@babylonjs/core/Materials/Textures/dynamicTexture";
 import type { Scene } from "@babylonjs/core/scene";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { VertexData } from "@babylonjs/core/Meshes/mesh.vertexData";
@@ -54,6 +55,24 @@ export function buildEnvironment(scene: Scene, forestTrees: ForestTree[] = []): 
   ];
 
   const ground = MeshBuilder.CreateGround("walkable-meadow", { width: 140, height: 140, subdivisions: 4 }, scene);
+  // A single repeating texture provides continuous grass coverage at any distance.
+  const texture = new DynamicTexture("meadow-grass-cover", { width: 512, height: 512 }, scene, false);
+  const context = texture.getContext();
+  context.fillStyle = "#718e62";
+  context.fillRect(0, 0, 512, 512);
+  const textureRandom = seeded(91242);
+  for (let i = 0; i < 28000; i++) {
+    const px = Math.floor(textureRandom() * 512);
+    const py = Math.floor(textureRandom() * 512);
+    const shade = Math.floor(textureRandom() * 4);
+    context.fillStyle = ["#648458", "#809d6c", "#668657", "#8da376"][shade];
+    context.fillRect(px, py, 1 + textureRandom() * 2, 2 + textureRandom() * 5);
+  }
+  texture.update();
+  texture.uScale = 14;
+  texture.vScale = 14;
+  meadow.diffuseColor = Color3.White();
+  meadow.diffuseTexture = texture;
   ground.material = meadow;
 
   // Keep a single coplanar-safe ground surface. The old overlapping meadow\n  // discs caused depth-buffer flickering when the camera moved.\n\n  // A continuous curved ribbon replaces intersecting rectangular path segments.
