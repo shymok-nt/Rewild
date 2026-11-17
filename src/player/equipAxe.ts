@@ -5,8 +5,8 @@ import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 import type { Scene } from "@babylonjs/core/scene";
 
 type GripSettings = { x: number; y: number; z: number; rx: number; ry: number; rz: number; scale: number };
-const STORAGE_KEY = "rewild-axe-grip-v1";
-const defaults: GripSettings = { x: 0, y: 0, z: 0, rx: 10, ry: 0, rz: -7, scale: 0.044 };
+const STORAGE_KEY = "rewild-axe-grip-v2";
+const defaults: GripSettings = { x: 0.01, y: -0.065, z: 0.155, rx: 2, ry: -93, rz: -59, scale: 0.04 };
 
 export async function equipAxe(
   scene: Scene,
