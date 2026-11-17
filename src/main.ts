@@ -7,6 +7,7 @@ import { createStreetDetails } from "./street";
 import { createGroundMaterials } from "./ground";
 import { GameAudio } from "./audio";
 import { createRoadDetails } from "./road";
+import { PickupEffects } from "./effects";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("App container not found");
@@ -126,6 +127,7 @@ let jumpActive = false;
 const jumpDuration = 0.82;
 const laneWidth=2.9;
 const hazards = new HazardSystem(scene);
+const pickupEffects = new PickupEffects(scene);
 statusEl.hidden=false;
 statusEl.textContent="RUSH CITY · SOKAKLAR SENİN!";
 restartButton.hidden=false;
@@ -189,7 +191,8 @@ function frame(){
   for(const stripe of stripes){stripe.position.z+=dt*speed;if(stripe.position.z>12)stripe.position.z-=230;}
   const collision = hazards.update(dt, distance, speed, lane, playerRoot.position.y, slide > 0);
   coins += collision.coins;
-  if(collision.coins>0)audio.coin();
+  if(collision.coins>0){audio.coin();pickupEffects.burst(laneVisual,1.2,0);}
+  pickupEffects.update(dt);
   if (collision.crashed) {
     audio.crash();
     dead = true;
