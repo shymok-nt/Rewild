@@ -107,8 +107,9 @@ export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
     const closest = scene.transformNodes
       .filter(node => node.name === "oak-forest")
       .map(node => {
-        const dx = node.position.x - px;
-        const dz = node.position.z - pz;
+        const worldPosition = node.getAbsolutePosition();
+        const dx = worldPosition.x - px;
+        const dz = worldPosition.z - pz;
         return { node, distanceSquared: dx * dx + dz * dz };
       })
       .filter(item => item.distanceSquared < SHADOW_RADIUS_SQUARED)
