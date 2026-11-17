@@ -8,6 +8,7 @@ import { createGroundMaterials } from "./ground";
 import { GameAudio } from "./audio";
 import { createRoadDetails } from "./road";
 import { PickupEffects } from "./effects";
+import { createSky } from "./sky";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("App container not found");
@@ -33,6 +34,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color("#91c8ef");
 scene.fog = new THREE.Fog("#91c8ef", 35, 110);
 const camera = new THREE.PerspectiveCamera(62, 1, 0.1, 180);
+const updateSky = createSky(scene);
 camera.position.set(0, 4.5, 10);
 camera.lookAt(0, 1.3, -16);
 scene.add(new THREE.HemisphereLight(0xf4f9ff, 0x768b9b, 2.2));
@@ -206,6 +208,7 @@ function frame(){
   scoreEl.textContent=Math.floor(distance)+" m · REKOR "+best+" m";
   coinsEl.textContent="● "+coins;
  }
+ updateSky(clock.elapsedTime,camera);
  renderer.render(scene,camera);
 }
 frame();
