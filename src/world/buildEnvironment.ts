@@ -54,30 +54,52 @@ export function buildEnvironment(scene: Scene, forestTrees: ForestTree[] = []): 
   ];
 
   const ground = MeshBuilder.CreateGround("walkable-meadow", { width: 140, height: 140, subdivisions: 4 }, scene);
-  // Grass004 1K PBR maps (ambientCG). All texture assets live in
-  // public/models; the 3D ground mesh/collisions remain unchanged.
+  // Forest Ground 01 (Poly Haven) is provisioned by scripts/prepareForestGround.mjs.
+  // If offline, retain the previously installed grass textures as a fallback.
   const groundMaterial = new PBRMaterial("forest-ground-pbr", scene);
   groundMaterial.metallic = 0;
   groundMaterial.roughness = 1;
-  const colorMap = new Texture("/models/forest-ground-color.jpg", scene, false, false, Texture.TRILINEAR_SAMPLINGMODE, undefined, () => { colorMap.updateURL("/models/grass-color.jpg"); });
-  const normalMap = new Texture("/models/forest-ground-normal.png", scene, false, false, Texture.TRILINEAR_SAMPLINGMODE, undefined, () => { normalMap.updateURL("/models/grass-normal.jpg"); });
-  const roughnessMap = new Texture("/models/forest-ground-roughness.jpg", scene, false, false, Texture.TRILINEAR_SAMPLINGMODE, undefined, () => { roughnessMap.updateURL("/models/grass-orm.jpg"); });
+  groundMaterial.specularIntensity = 0.12;
+  const colorMap = new Texture("/models/forest-ground-color.jpg", scene, false, false,
+    Texture.TRILINEAR_SAMPLINGMODE, undefined,
+    () => colorMap.updateURL("/models/grass-color.jpg"));
+  const normalMap = new Texture("/models/forest-ground-normal.png", scene, false, false,
+    Texture.TRILINEAR_SAMPLINGMODE, undefined,
+    () => normalMap.updateURL("/models/grass-normal.jpg"));
+  const roughnessMap = new Texture("/models/forest-ground-roughness.jpg", scene, false, false,
+    Texture.TRILINEAR_SAMPLINGMODE, undefined,
+    () => roughnessMap.updateURL("/models/grass-orm.jpg"));
   for (const map of [colorMap, normalMap, roughnessMap]) {
-    map.uScale = 12;
-    map.vScale = 12;
+    map.uScale = 9;
+    map.vScale = 9;
     map.wrapU = Texture.WRAP_ADDRESSMODE;
     map.wrapV = Texture.WRAP_ADDRESSMODE;
   }
   groundMaterial.albedoTexture = colorMap;
   groundMaterial.bumpTexture = normalMap;
+  groundMaterial.bumpTexture.level = 0.28;
   groundMaterial.metallicTexture = roughnessMap;
   groundMaterial.useRoughnessFromMetallicTextureGreen = true;
-  groundMaterial.useRoughnessFromMetallicTextureAlpha = false;
   groundMaterial.useMetallnessFromMetallicTextureBlue = false;
   groundMaterial.useAmbientOcclusionFromMetallicTextureRed = false;
-  groundMaterial.roughness = 0.95;
   groundMaterial.invertNormalMapY = false;
   ground.material = groundMaterial;
+
+  // The former flat beige path had no surface detail. Share the forest PBR
+  // material but use a warmer tint and a separate UV scale.
+  const pathMaterial = new PBRMaterial("forest-path-pbr", scene);
+  pathMaterial.metallic = 0;
+  pathMaterial.roughness = 1;
+  pathMaterial.specularIntensity = 0.08;
+  pathMaterial.albedoColor = Color3.FromHexString("#A28D70");
+  const pathColor = new Texture("/models/forest-ground-color.jpg", scene, false, false,
+    Texture.TRILINEAR_SAMPLINGMODE, undefined,
+    () => pathColor.updateURL("/models/grass-color.jpg"));
+  pathColor.uScale = 5;
+  pathColor.vScale = 5;
+  pathColor.wrapU = Texture.WRAP_ADDRESSMODE;
+  pathColor.wrapV = Texture.WRAP_ADDRESSMODE;
+  pathMaterial.albedoTexture = pathColor;
 
   // Keep a single coplanar-safe ground surface. The old overlapping meadow\n  // discs caused depth-buffer flickering when the camera moved.\n\n  // A continuous curved ribbon replaces intersecting rectangular path segments.
   const waypoints = [
@@ -109,7 +131,7 @@ export function buildEnvironment(scene: Scene, forestTrees: ForestTree[] = []): 
   left.push(last.add(normal.scale(1.65)));
   right.push(last.subtract(normal.scale(1.65)));
   const path = MeshBuilder.CreateRibbon("continuous-footpath", { pathArray: [left, right], sideOrientation: Mesh.DOUBLESIDE }, scene);
-  path.material = soil;
+  path.material = pathMaterial;
 
   // Optimized interpretation of the custom stylized pine: a tapered trunk and
   // five overlapping, slightly irregular needle canopies. The original GLB
