@@ -1,12 +1,10 @@
 import * as THREE from "three";
-import { createHumanRunner, type RunnerPose } from "./humanRunner";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { loadWorldAssets } from "./assetWorld";
 import "./style.css";
-import { createCity } from "./city";
 import { HazardSystem } from "./hazards";
 import { createStreetDetails } from "./street";
-import { createGroundMaterials } from "./ground";
 import { GameAudio } from "./audio";
-import { createRoadDetails } from "./road";
 import { PickupEffects } from "./effects";
 import { createSky } from "./sky";
 import { clampLane, jumpArc, runnerSpeed } from "./rules";
@@ -46,22 +44,8 @@ sun.shadow.mapSize.set(512, 512);
 sun.shadow.camera.left = -22; sun.shadow.camera.right = 22;
 sun.shadow.camera.top = 25; sun.shadow.camera.bottom = -25;
 scene.add(sun);
-const {road:roadMaterial,sidewalk:sidewalkMaterial}=createGroundMaterials();
-const lineMaterial = new THREE.MeshStandardMaterial({color:0xfceacb,emissive:0x50422b,emissiveIntensity:0.15});
-function plane(width:number,depth:number,x:number,y:number,z:number,material:THREE.Material):THREE.Mesh {
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width,depth),material);
-  mesh.rotation.x = -Math.PI/2;mesh.position.set(x,y,z);mesh.receiveShadow=true;scene.add(mesh);return mesh;
-}
-plane(10,240,0,0,-90,roadMaterial);
-plane(3,240,-6.5,0.025,-90,sidewalkMaterial);
-plane(3,240,6.5,0.025,-90,sidewalkMaterial);
-const stripes:THREE.Mesh[]=[];
-for(let i=0;i<46;i++)for(const lane of [-1,1]){
-  const m=plane(0.10,2.4,lane*1.45,0.035,-i*5+9,lineMaterial);stripes.push(m);
-}
-const updateCity = createCity(scene);
 const updateStreet = createStreetDetails(scene);
-const updateRoad = createRoadDetails(scene);
+let updateWorld: (distance: number) => void = () => {};
 const playerRoot=new THREE.Group();scene.add(playerRoot);
 const shadowCanvas=document.createElement("canvas");
 shadowCanvas.width=shadowCanvas.height=128;
@@ -80,9 +64,54 @@ const playerShadow=new THREE.Mesh(
 playerShadow.rotation.x=-Math.PI/2;
 playerShadow.position.y=0.045;
 scene.add(playerShadow);
-// Original procedural human runner; no network model loading or licensing dependency.
-const humanRunner = createHumanRunner();
-playerRoot.add(humanRunner.root);
+// Model geometry comes exclusively from GLB files; Three.js only loads and animates it.
+const loader = new GLTFLoader();
+let runnerModel: THREE.Object3D | null = null;
+const joints = new Map<string, THREE.Object3D>();
+let runPhase = 0;
+let poseBlend = 0;
+function animateRunner(dt: number, pose: "run" | "jump" | "slide", speed: number): void {
+  if (!runnerModel) return;
+  runPhase += dt * Math.max(8, speed * 0.72);
+  const smooth = 1 - Math.exp(-dt * 14);
+  poseBlend += ((pose === "slide" ? 1 : 0) - poseBlend) * smooth;
+  const stride = Math.sin(runPhase);
+  const torso = joints.get("Torso");
+  if (torso) torso.rotation.x = poseBlend * 0.48;
+  runnerModel.position.y = -poseBlend * 0.42 + (pose === "run" ? Math.abs(stride) * 0.06 : 0);
+  for (const [i, side] of ["L", "R"].entries()) {
+    const sign = i === 0 ? 1 : -1;
+    const arm = joints.get("Arm" + side);
+    const leg = joints.get("Leg" + side);
+    const knee = joints.get("Knee" + side);
+    const armTarget = pose === "run" ? sign * stride * 0.65 : pose === "jump" ? -0.5 : -0.9;
+    const legTarget = pose === "run" ? -sign * stride * 0.68 : pose === "jump" ? 0.35 : -1.05;
+    const kneeTarget = pose === "run" ? Math.max(0, sign * stride) * 0.9 : pose === "jump" ? 0.7 : 1.65;
+    if (arm) arm.rotation.x += (armTarget - arm.rotation.x) * smooth;
+    if (leg) leg.rotation.x += (legTarget - leg.rotation.x) * smooth;
+    if (knee) knee.rotation.x += (kneeTarget - knee.rotation.x) * smooth;
+  }
+}
+let assetsReady = false;
+Promise.all([loader.loadAsync("/assets/runner.glb"), loadWorldAssets(scene)])
+  .then(([gltf, update]) => {
+    runnerModel = gltf.scene;
+    runnerModel.traverse(node => {
+      if (node.name) joints.set(node.name, node);
+      if (node instanceof THREE.Mesh) node.castShadow = true;
+    });
+    playerRoot.add(runnerModel);
+    updateWorld = update;
+    assetsReady = true;
+    restartButton.disabled = false;
+    restartButton.textContent = "KOŞUYA BAŞLA";
+    statusEl.textContent = "RUSH CITY · SOKAKLAR SENİN!";
+  }).catch(error => {
+    console.error("GLB asset loading failed", error);
+    statusEl.hidden = false;
+    statusEl.textContent = "3D modeller yüklenemedi. public/assets klasörünü kontrol edin.";
+    restartButton.textContent = "MODEL HATASI";
+  });
 const clock=new THREE.Clock();
 let distance=0,coins=0,lane=0,laneVisual=0,slide=0,paused=true,dead=false;
 let best = 0;
@@ -96,8 +125,8 @@ const pickupEffects = new PickupEffects(scene);
 statusEl.hidden=false;
 statusEl.textContent="RUSH CITY · SOKAKLAR SENİN!";
 restartButton.hidden=false;
-restartButton.textContent="KOŞUYA BAŞLA";
-restartButton.disabled=false;
+restartButton.textContent="3D MODELLER YÜKLENİYOR";
+restartButton.disabled=true;
 pauseButton.textContent="▶";
 function action(key:string){
  if(dead&&key!=="r"&&key!==" ")return;
@@ -106,7 +135,7 @@ function action(key:string){
  if(key==="ArrowRight"||key==="d"){const prev=lane;lane=clampLane(lane+1);if(prev!==lane)audio.lane();}
  if((key==="ArrowUp"||key===" "||key==="w")&&!jumpActive&&slide<=0){jumpActive=true;jumpElapsed=0;audio.jump();}
  if((key==="ArrowDown"||key==="s")&&slide<=0&&!jumpActive){slide=0.72;audio.slide();}
- if((key==="p"||key==="Escape")&&!dead){paused=!paused;pauseButton.textContent=paused?"▶":"Ⅱ";if(!dead){statusEl.hidden=!paused;if(paused)statusEl.textContent="DURAKLATILDI · P İLE DEVAM";else{restartButton.hidden=true;audio.start();}}}
+ if((key==="p"||key==="Escape")&&!dead&&assetsReady){paused=!paused;pauseButton.textContent=paused?"▶":"Ⅱ";if(!dead){statusEl.hidden=!paused;if(paused)statusEl.textContent="DURAKLATILDI · P İLE DEVAM";else{restartButton.hidden=true;audio.start();}}}
  if(dead&&(key==="r"||key===" ")){restartButton.hidden=true;restartButton.textContent="YENİDEN OYNA";dead=false;paused=false;pauseButton.textContent="Ⅱ";distance=0;coins=0;lane=0;laneVisual=0;slide=0;jumpActive=false;jumpElapsed=0;hazards.reset();statusEl.hidden=true;audio.start();}
 }
 restartButton.addEventListener("click",()=>{audio.unlock();if(dead)action("r");else if(paused)action("p");});
@@ -156,15 +185,14 @@ function frame(){
  if(!paused&&!dead){
   const speed=runnerSpeed(distance);
   distance+=dt*speed;
-  updateCity(distance);
+  updateWorld(distance);
   updateStreet(distance);
-  updateRoad(distance);
   const previousLaneVisual=laneVisual;
   laneVisual=THREE.MathUtils.damp(laneVisual,lane*laneWidth,13,dt);
   if(jumpActive){jumpElapsed=Math.min(jumpDuration,jumpElapsed+dt);if(jumpElapsed>=jumpDuration){jumpActive=false;}}
   const jumpHeight=jumpActive?jumpArc(jumpElapsed,jumpDuration):0;
-  const pose: RunnerPose = jumpActive ? "jump" : slide > 0 ? "slide" : "run";
-  humanRunner.update(dt, pose, speed);
+  const pose = jumpActive ? "jump" : slide > 0 ? "slide" : "run";
+  animateRunner(dt, pose, speed);
   if(slide>0)slide=Math.max(0,slide-dt);
   playerRoot.position.set(laneVisual,jumpHeight,0);
   playerShadow.position.x=laneVisual;
@@ -173,7 +201,6 @@ function frame(){
   playerRoot.scale.y=1; // Articulated slide pose controls height instead of scaling the whole avatar.
   camera.position.x=THREE.MathUtils.damp(camera.position.x,laneVisual*0.16,2.8,dt);
   camera.lookAt(camera.position.x*0.25,1.25,-16);
-  for(const stripe of stripes){stripe.position.z+=dt*speed;if(stripe.position.z>12)stripe.position.z-=230;}
   const collision = hazards.update(dt, distance, speed, previousLaneVisual, laneVisual, playerRoot.position.y, slide > 0);
   coins += collision.coins;
   if(collision.coins>0){audio.coin();pickupEffects.burst(laneVisual,1.2,0);}
