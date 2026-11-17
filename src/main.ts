@@ -7,10 +7,11 @@ import { createStreetDetails } from "./street";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("App container not found");
-app.innerHTML = `<div id="hud"><strong>RUSH CITY</strong><span id="score">0 m</span><span id="coins">● 0</span></div><div id="instructions">← → ŞERİT &nbsp; · &nbsp; ↑ ZIPLA &nbsp; · &nbsp; ↓ KAY &nbsp; · &nbsp; P DURAKLAT</div><div id="status" hidden></div>`;
+app.innerHTML = `<div id="hud"><strong>RUSH CITY</strong><span id="score">0 m</span><span id="coins">● 0</span></div><div id="instructions">← → ŞERİT &nbsp; · &nbsp; ↑ ZIPLA &nbsp; · &nbsp; ↓ KAY &nbsp; · &nbsp; P DURAKLAT</div><div id="mobile-controls"><button data-action="ArrowLeft" aria-label="Sola geç">◀</button><button data-action="ArrowUp" aria-label="Zıpla">↑</button><button data-action="ArrowDown" aria-label="Kay">↓</button><button data-action="ArrowRight" aria-label="Sağa geç">▶</button></div><button id="pause-button" aria-label="Duraklat">Ⅱ</button><div id="status" hidden></div>`;
 const scoreEl = document.querySelector<HTMLElement>("#score")!;
 const coinsEl = document.querySelector<HTMLElement>("#coins")!;
 const statusEl = document.querySelector<HTMLElement>("#status")!;
+const pauseButton = document.querySelector<HTMLButtonElement>("#pause-button")!;
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
 renderer.shadowMap.enabled = true;
@@ -88,14 +89,16 @@ function action(key:string){
  if(key==="ArrowRight"||key==="d")lane=Math.min(1,lane+1);
  if((key==="ArrowUp"||key===" "||key==="w")&&!jumpActive&&slide<=0){jumpActive=true;jumpElapsed=0;jump=jumpDuration;}
  if((key==="ArrowDown"||key==="s")&&slide<=0&&!jumpActive)slide=0.72;
- if(key==="p"||key==="Escape"){paused=!paused;if(!dead){statusEl.hidden=!paused;statusEl.textContent="DURAKLATILDI · P İLE DEVAM";}}
- if(dead&&(key==="r"||key===" ")){dead=false;paused=false;distance=0;coins=0;lane=0;laneVisual=0;jump=0;slide=0;jumpActive=false;jumpElapsed=0;hazards.reset();statusEl.hidden=true;}
+ if(key==="p"||key==="Escape"){paused=!paused;pauseButton.textContent=paused?"▶":"Ⅱ";if(!dead){statusEl.hidden=!paused;statusEl.textContent="DURAKLATILDI · P İLE DEVAM";}}
+ if(dead&&(key==="r"||key===" ")){dead=false;paused=false;pauseButton.textContent="Ⅱ";distance=0;coins=0;lane=0;laneVisual=0;jump=0;slide=0;jumpActive=false;jumpElapsed=0;hazards.reset();statusEl.hidden=true;}
 }
+pauseButton.addEventListener("click",()=>action("p"));
+document.querySelectorAll<HTMLButtonElement>("[data-action]").forEach(button=>button.addEventListener("pointerdown",e=>{e.preventDefault();action(button.dataset.action||"");}));
 window.addEventListener("keydown",e=>{if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"," "].includes(e.key))e.preventDefault();if(!e.repeat)action(e.key);});
 let touchStart:{x:number,y:number}|null=null;
 renderer.domElement.addEventListener("pointerdown",e=>touchStart={x:e.clientX,y:e.clientY});
 renderer.domElement.addEventListener("pointerup",e=>{if(!touchStart)return;const dx=e.clientX-touchStart.x,dy=e.clientY-touchStart.y;touchStart=null;if(Math.abs(dx)>35&&Math.abs(dx)>Math.abs(dy))action(dx>0?"ArrowRight":"ArrowLeft");else if(Math.abs(dy)>35)action(dy<0?"ArrowUp":"ArrowDown");});
-function resize(){const w=app!.clientWidth,h=app!.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);}
+function resize(){const w=Math.max(1,app!.clientWidth),h=Math.max(1,app!.clientHeight);camera.aspect=w/h;camera.fov=h>w?72:62;camera.updateProjectionMatrix();renderer.setSize(w,h);}
 window.addEventListener("resize",resize);resize();
 function frame(){
  requestAnimationFrame(frame);
