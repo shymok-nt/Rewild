@@ -242,22 +242,32 @@ export class RunnerScene extends Phaser.Scene {
     }
     for (const o of this.obstacles) {
       if (o.collected) continue;
-      const t = Math.max(0, Math.min(1, 1 - (o.z - this.distance) / 65));
+      // Keep the obstacle at the runner's ground plane when collision occurs.
+      const t = Math.max(0, Math.min(0.91, (1 - (o.z - this.distance) / 65) * 0.91));
       if (t <= 0 || t > 1) continue;
       const x = this.roadX(o.lane, t), y = this.roadY(t), size = 8 + t * 70;
+      g.fillStyle(0x101c32, 0.12 + t * 0.17);
+      g.fillEllipse(x, y + 3, size * 1.45, Math.max(3, size * 0.22));
       if (o.kind === 3) {
-        g.fillStyle(0xffd34d); g.fillCircle(x, y - size * 0.6, size * 0.3);
+        const shimmer = 0.8 + Math.sin(this.runClock * 0.65 + o.z) * 0.2;
+        g.fillStyle(0xffd34d); g.fillEllipse(x, y - size * 0.6, size * 0.3 * shimmer, size * 0.3);
         g.lineStyle(Math.max(1, t * 4), 0xfff0ac); g.strokeCircle(x, y - size * 0.6, size * 0.3);
       } else if (o.kind === 0) {
         g.fillStyle(0xff884f); g.fillRoundedRect(x - size * 0.6, y - size * 0.7, size * 1.2, size * 0.65, 4);
         g.fillStyle(0xffdf9b); g.fillRect(x - size * 0.45, y - size * 0.5, size * 0.9, size * 0.14);
+        g.fillStyle(0xffffff, 0.8);
+        g.fillRect(x - size * 0.52, y - size * 0.28, size * 0.2, Math.max(2, size * 0.08));
       } else if (o.kind === 1) {
         g.fillStyle(0x40587b); g.fillRect(x - size * 0.65, y - size * 1.6, size * 0.13, size * 1.6);
         g.fillRect(x + size * 0.52, y - size * 1.6, size * 0.13, size * 1.6);
         g.fillStyle(0xffbb63); g.fillRoundedRect(x - size * 0.75, y - size * 1.6, size * 1.5, size * 0.4, 3);
+        g.fillStyle(0x253959);
+        g.fillRect(x - size * 0.53, y - size * 1.47, size * 1.06, Math.max(2, size * 0.08));
       } else {
         g.fillStyle(0x47648b); g.fillRoundedRect(x - size * 0.6, y - size * 1.5, size * 1.2, size * 1.5, 5);
         g.fillStyle(0x9dc4df); g.fillRect(x - size * 0.4, y - size * 1.3, size * 0.8, size * 0.3);
+        g.fillStyle(0xe9f5ff, 0.75);
+        g.fillRect(x - size * 0.4, y - size * 1.3, size * 0.8, Math.max(2, size * 0.06));
       }
     }
     this.drawPlayer();
