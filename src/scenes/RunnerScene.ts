@@ -29,6 +29,7 @@ export class RunnerScene extends Phaser.Scene {
   private jumpTime = 0;
   private slideTime = 0;
   private runClock = 0;
+  private pickupGlow = 0;
   private pointerStart: { x: number; y: number } | null = null;
 
   constructor() { super("RunnerScene"); }
@@ -81,7 +82,7 @@ export class RunnerScene extends Phaser.Scene {
   private reset(): void {
     this.gameOver = false; this.overlay.setVisible(false); this.distance = 0;
     this.coins = 0; this.combo = 0; this.nextSpawn = 28; this.obstacles = []; this.lane = 0;
-    this.visualLane = 0; this.jumpTime = 0; this.slideTime = 0;
+    this.visualLane = 0; this.jumpTime = 0; this.slideTime = 0; this.pickupGlow = 0;
   }
   private lose(): void {
     this.gameOver = true;
@@ -103,13 +104,15 @@ export class RunnerScene extends Phaser.Scene {
     this.slideTime = Math.max(0, this.slideTime - dt);
     const previousDistance = this.distance;
     this.distance += dt * Math.min(30, 20 + this.distance / 500);
+    this.pickupGlow = Math.max(0, this.pickupGlow - dt);
     if (this.distance > this.nextSpawn) {
       this.obstacles.push({ lane: Phaser.Math.Between(-1, 1), z: this.distance + 65, kind: Phaser.Math.Between(0, 3), collected: false });
       this.nextSpawn = this.distance + Phaser.Math.Between(17, 24);
     }
     for (const o of this.obstacles) {
       if (!o.collected && o.z >= previousDistance && o.z <= this.distance + 2.5 && o.lane === this.lane) {
-        if (o.kind === 3) { this.coins++; this.totalCoins++; this.combo++; o.collected = true; }
+        if (o.kind === 3) { this.coins++; this.totalCoins++; this.combo++; this.pickupGlow = 0.36; o.collected = true;
+          try { localStorage.setItem('rush-city-coins', String(this.totalCoins)); } catch {} }
         else if ((o.kind === 0 && this.jumpTime > 0.18) || (o.kind === 1 && this.slideTime > 0.12)) { o.collected = true; this.combo++; }
         else { this.lose(); break; }
       }
@@ -214,6 +217,10 @@ export class RunnerScene extends Phaser.Scene {
       }
     }
     this.drawPlayer();
+    if (this.pickupGlow > 0) {
+      g.lineStyle(4, 0xffd65c, this.pickupGlow / 0.36);
+      g.strokeCircle(this.roadX(this.visualLane, 0.91), 453, 44 + (0.36 - this.pickupGlow) * 130);
+    }
   }
 
   private drawPlayer(): void {
