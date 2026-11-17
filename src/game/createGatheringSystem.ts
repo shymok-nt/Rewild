@@ -79,9 +79,52 @@ export function createGatheringSystem(scene: Scene, player: PlayerController, ob
   const toast = document.createElement("div");
   toast.id = "rewild-toast";
   document.body.append(panel, prompt, toast);
+  // Nine-slot survival hotbar. It mirrors the real saved inventory;
+  // selecting a slot does not pretend to equip an unimplemented item.
+  const hotbar = document.createElement("nav");
+  hotbar.id = "rewild-hotbar";
+  hotbar.setAttribute("aria-label", "Hızlı erişim çubuğu");
+  const slotItems = [
+    { icon: "🪓", label: "Balta", kind: null },
+    { icon: "🪵", label: "Odun", kind: "wood" },
+    { icon: "🪨", label: "Taş", kind: "stone" },
+    ...Array.from({ length: 6 }, () => ({ icon: "", label: "Boş", kind: null })),
+  ] as const;
+  let selectedSlot = 0;
+  const slotElements = slotItems.map((item, index) => {
+    const slot = document.createElement("button");
+    slot.type = "button";
+    slot.className = "rewild-hotbar-slot";
+    slot.title = item.label;
+    slot.setAttribute("aria-label", (index + 1) + ". " + item.label);
+    slot.innerHTML = '<span class="rewild-slot-key">' + (index + 1) + '</span><span class="rewild-slot-icon"></span><span class="rewild-slot-count"></span>';
+    slot.querySelector<HTMLElement>(".rewild-slot-icon")!.textContent = item.icon;
+    slot.addEventListener("click", () => selectSlot(index));
+    hotbar.appendChild(slot);
+    return slot;
+  });
+  function selectSlot(index: number): void {
+    selectedSlot = (index + 9) % 9;
+    slotElements.forEach((slot, i) => {
+      slot.classList.toggle("is-selected", i === selectedSlot);
+      slot.setAttribute("aria-pressed", String(i === selectedSlot));
+    });
+  }
+  function updateHotbar(): void {
+    slotItems.forEach((item, i) => {
+      const count = item.kind ? inventory.count(item.kind) : 0;
+      slotElements[i].querySelector<HTMLElement>(".rewild-slot-count")!.textContent = count > 0 ? String(count) : "";
+      slotElements[i].classList.toggle("is-empty", i > 0 && count === 0);
+    });
+  }
+  selectSlot(0);
+  updateHotbar();
+  document.body.appendChild(hotbar);
+
   const items = panel.querySelector<HTMLElement>("#rewild-items");
   const renderInventory = () => {
     if (items) items.textContent = inventory.snapshot().map(stack => RESOURCE_LABELS[stack.kind] + ": " + stack.count).join("   •   ");
+    updateHotbar();
   };
   renderInventory();
   let noticeUntil = 0;
@@ -121,6 +164,10 @@ export function createGatheringSystem(scene: Scene, player: PlayerController, ob
   }
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.repeat) return;
+    if (/^Digit[1-9]$/.test(event.code) && panel.hidden) {
+      selectSlot(Number(event.code.slice(5)) - 1);
+      return;
+    }
     if (event.code === "KeyI") {
       event.preventDefault();
       panel.hidden = !panel.hidden;
@@ -199,6 +246,7 @@ export function createGatheringSystem(scene: Scene, player: PlayerController, ob
   scene.onDisposeObservable.add(() => {
     window.removeEventListener("keydown", onKeyDown);
     panel.remove();
+    hotbar.remove();
     prompt.remove();
     toast.remove();
     for (const fragment of fragments) fragment.mesh.dispose();
