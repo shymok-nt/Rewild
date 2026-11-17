@@ -6,6 +6,7 @@ import { HazardSystem } from "./hazards";
 import { createStreetDetails } from "./street";
 import { createGroundMaterials } from "./ground";
 import { GameAudio } from "./audio";
+import { createRoadDetails } from "./road";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("App container not found");
@@ -56,6 +57,7 @@ for(let i=0;i<46;i++)for(const lane of [-1,1]){
 }
 const updateCity = createCity(scene);
 const updateStreet = createStreetDetails(scene);
+const updateRoad = createRoadDetails(scene);
 const playerRoot=new THREE.Group();scene.add(playerRoot);
 const shadowCanvas=document.createElement("canvas");
 shadowCanvas.width=shadowCanvas.height=128;
@@ -165,6 +167,7 @@ function frame(){
   distance+=dt*speed;
   updateCity(distance);
   updateStreet(distance);
+  updateRoad(distance);
   mixer?.update(dt);
   laneVisual=THREE.MathUtils.damp(laneVisual,lane*laneWidth,13,dt);
   if(jumpActive){jumpElapsed=Math.min(jumpDuration,jumpElapsed+dt);jump=jumpDuration-jumpElapsed;if(jumpElapsed>=jumpDuration){jumpActive=false;jump=0;}}
