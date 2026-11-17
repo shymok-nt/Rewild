@@ -2,7 +2,6 @@ import { validImportedMeshes } from "./validateImportedMeshes";
 import "@babylonjs/loaders/glTF";
 import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
-import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { Quaternion, Vector3 } from "@babylonjs/core/Maths/math.vector";
 import type { Scene } from "@babylonjs/core/scene";
 import type { ForestTree } from "./installOakForest";
