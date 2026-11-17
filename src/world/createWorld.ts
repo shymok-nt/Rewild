@@ -66,7 +66,7 @@ export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
   if (ground) ground.receiveShadows = true;
   createGrassPrototype(scene);
   const player = createPlayer(scene, camera, obstacles);
-  const harvestNodes = createGatheringSystem(scene, player, obstacles);
+  const harvestNodes = createGatheringSystem(scene, player, obstacles, forestTrees);
   // Keep the shadow map inexpensive: only the nearby player and cabin,
   // not the full instanced forest, rocks or every blade of grass.
   const staticCasters = scene.meshes.filter(mesh =>
