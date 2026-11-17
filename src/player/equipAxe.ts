@@ -6,7 +6,7 @@ import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import type { Scene } from "@babylonjs/core/scene";
 
 /** Preview equipment. Keeps the tool at hand height and scales by real bounds. */
-export async function equipAxe(scene: Scene, player: TransformNode, isHarvesting: () => boolean = () => false): Promise<void> {
+export async function equipAxe(scene: Scene, player: TransformNode, isHarvesting: () => boolean = () => false, getRightHand: () => import("@babylonjs/core/Meshes/abstractMesh").AbstractMesh | null = () => null): Promise<void> {
   const result = await SceneLoader.ImportMeshAsync("", "/models/", "Axe.glb", scene);
   if (scene.isDisposed) return;
   const meshes = result.meshes.filter((m): m is Mesh => m instanceof Mesh && m.getTotalVertices() > 0);
@@ -46,11 +46,20 @@ export async function equipAxe(scene: Scene, player: TransformNode, isHarvesting
   // Small procedural grip movement; keep the axe attached to the player's hand
   // instead of a fixed, oversized object beside the torso.
   let elapsed = 0;
+  let attachedHand: import("@babylonjs/core/Meshes/abstractMesh").AbstractMesh | null = null;
   const observer = scene.onBeforeRenderObservable.add(() => {
     elapsed += Math.min(scene.getEngine().getDeltaTime() / 1000, 0.05);
+    const hand = getRightHand();
+    if (hand && hand !== attachedHand) {
+      attachedHand = hand;
+      anchor.parent = hand;
+      anchor.position.set(0, 0, 0);
+      anchor.rotation.set(0, 0, 0);
+      console.info("[Rewild] Axe attached to animated Hand_R");
+    }
     const chopping = isHarvesting();
-    anchor.rotation.x = chopping ? -0.65 + Math.sin(elapsed * 21) * 0.65 : 0;
-    anchor.rotation.z = chopping ? -0.15 : Math.sin(elapsed * 2.4) * 0.012;
+    anchor.rotation.x = attachedHand ? 0 : chopping ? -0.65 + Math.sin(elapsed * 21) * 0.65 : 0;
+    anchor.rotation.z = attachedHand ? 0 : chopping ? -0.15 : Math.sin(elapsed * 2.4) * 0.012;
   });
   scene.onDisposeObservable.add(() => {
     scene.onBeforeRenderObservable.remove(observer);
