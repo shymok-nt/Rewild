@@ -1,6 +1,7 @@
 import "@babylonjs/loaders/glTF";
 import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
+import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 import type { Scene } from "@babylonjs/core/scene";
 
@@ -49,23 +50,29 @@ export async function equipAxe(
     mesh.isPickable = false;
   }
 
-  let attachedHand: AbstractMesh | null = null;
+  // Keep the socket in player space. The imported Hand_R mesh has a local
+  // bounding-box centre that does not reliably correspond to the palm.
+  // Follow its WORLD position instead and move the tool away from the torso.
   const observer = scene.onBeforeRenderObservable.add(() => {
     const hand = getRightHand();
-    if (hand && hand !== attachedHand) {
-      attachedHand = hand;
-      socket.parent = hand;
-      // The hand node itself is a mesh; attach at its geometric palm centre.
-      const box = hand.getBoundingInfo().boundingBox;
-      const palm = box.minimum.add(box.maximum).scale(0.5);
-      socket.position.copyFrom(palm);
-      // Hand_R geometry centre is close to the wrist; nudge toward the fingers.
-      socket.position.z += 0.025;
-      console.info("[Rewild] Sketchfab axe attached by shaft grip to Hand_R");
+    if (!hand) return;
+    hand.computeWorldMatrix(true);
+    player.computeWorldMatrix(true);
+    const handWorld = hand.getAbsolutePosition();
+    const rootWorld = player.getAbsolutePosition();
+    const outward = handWorld.subtract(rootWorld);
+    outward.y = 0;
+    if (outward.lengthSquared() < 0.0001) {
+      // The character's right arm is on its local negative-X side.
+      Vector3.TransformNormalToRef(new Vector3(-1, 0, 0), player.getWorldMatrix(), outward);
     }
-    // Positive forward pitch keeps the blade in front of the torso.
-    // Blade broad side lies on local X; turn its cutting direction forward.
-    socket.rotation.set(isHarvesting() ? 0.12 : 0.26, Math.PI / 2, 0.04);
+    outward.normalize();
+    const gripWorld = handWorld.add(outward.scale(0.22));
+    gripWorld.y -= 0.035;
+    const inverse = player.getWorldMatrix().clone().invert();
+    socket.position.copyFrom(Vector3.TransformCoordinates(gripWorld, inverse));
+    // No 90-degree Y turn: it previously pointed the blade into the chest.
+    socket.rotation.set(isHarvesting() ? 0.08 : 0.18, 0, -0.12);
   });
 
   scene.onDisposeObservable.add(() => {
