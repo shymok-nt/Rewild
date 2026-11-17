@@ -30,12 +30,12 @@ export async function installGrassPatches(scene: Scene, forest: readonly ForestT
     return { mesh, originalWorld };
   });
   const width = Math.max(max.x - min.x, max.z - min.z, 0.001);
-  const baseScale = Math.min(4, Math.max(0.015, 1.3 / width));
+  const baseScale = Math.min(4, Math.max(0.015, 2.4 / width));
   const center = new Vector3((min.x + max.x) / 2, min.y, (min.z + max.z) / 2);
   // Generate coverage for the entire 140 x 140 meadow, not just the spawn.
   // Only a bounded set near the player is ever uploaded to the GPU.
-  const visibleLimit = Math.min(480, Math.max(32, Math.floor(1600000 / Math.max(vertices, 1))));
-  const cellSize = 3.3;
+  const visibleLimit = Math.min(1500, Math.max(80, Math.floor(2400000 / Math.max(vertices, 1))));
+  const cellSize = 1.65;
   let state = 745123;
   const random = () => {
     state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
@@ -43,16 +43,16 @@ export async function installGrassPatches(scene: Scene, forest: readonly ForestT
   };
   const candidates: { x: number; z: number; transform: Matrix }[] = [];
   const offset = Matrix.Translation(-center.x, -center.y, -center.z);
-  for (let gx = -20; gx <= 20; gx++) {
-    for (let gz = -20; gz <= 20; gz++) {
-      const x = gx * cellSize + (random() - 0.5) * 1.8;
+  for (let gx = -41; gx <= 41; gx++) {
+    for (let gz = -41; gz <= 41; gz++) {
+      const x = gx * cellSize + (random() - 0.5) * 0.7;
       const z = gz * cellSize + (random() - 0.5) * 1.8;
       if (Math.abs(x) > 68 || Math.abs(z) > 68) continue;
       if (Math.abs(x) < 4.3 && Math.abs(z) < 7.5) continue;
       if (Math.abs(x + 12) < 8 && Math.abs(z - 46) < 7) continue;
       if (z >= 8 && z <= 58 && Math.abs(x - Math.sin(z * 0.12) * 3) < 2.5) continue;
       if (forest.some(tree => Math.hypot(x - tree.x, z - tree.z) < 1.5 * tree.scale)) continue;
-      const scale = baseScale * (0.7 + random() * 0.65);
+      const scale = baseScale * (0.85 + random() * 0.3);
       const placement = Matrix.Compose(
         new Vector3(scale, scale, scale),
         Quaternion.RotationAxis(Vector3.Up(), random() * Math.PI * 2),
@@ -81,10 +81,13 @@ export async function installGrassPatches(scene: Scene, forest: readonly ForestT
     const target = scene.getTransformNodeByName("player-root");
     const x = target?.position.x ?? 0;
     const z = target?.position.z ?? 9;
-    if (Math.hypot(x - previousX, z - previousZ) < 4) return;
+    if (Math.hypot(x - previousX, z - previousZ) < 1.5) return;
     previousX = x;
     previousZ = z;
-    const radiusSquared = 34 * 34;
+    // Keep a fully populated local patch rather than sparse dots spread over 34m.
+    // Larger source models use a smaller radius to stay inside the GPU budget.
+    const radius = Math.min(27, Math.max(8, Math.sqrt(visibleLimit / Math.PI) * cellSize * 0.88));
+    const radiusSquared = radius * radius;
     const visible = candidates
       .filter(patch => (patch.x - x) ** 2 + (patch.z - z) ** 2 < radiusSquared)
       .sort((a, b) => ((a.x - x) ** 2 + (a.z - z) ** 2) -
