@@ -44,6 +44,13 @@ if (process.platform === "win32") {
     break;
   }
 }
+const cached = await Promise.all(files.map(async file => {
+  try { return (await stat(join(root, file))).size > 100; } catch { return false; }
+}));
+if (cached.every(Boolean)) {
+  console.info("[Rewild] Searsia cache ready");
+  process.exit(0);
+}
 let manifest = [];
 try {
   const response = await fetch("https://api.polyhaven.com/files/searsia_lucida", { signal: AbortSignal.timeout(12000) });
