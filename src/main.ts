@@ -118,7 +118,7 @@ loader.load(characterUrl,gltf=>{
   statusEl.textContent="3D karakter modeli henüz kurulmadı: public/assets/character.glb gerekiyor. Sahne hazır, karakter varlığı bekleniyor.";
 });
 const clock=new THREE.Clock();
-let distance=0,coins=0,lane=0,laneVisual=0,jump=0,slide=0,paused=false,dead=false;
+let distance=0,coins=0,lane=0,laneVisual=0,jump=0,slide=0,paused=true,dead=false;
 let best = 0;
 try { best = Math.max(0, Number(localStorage.getItem("rush-city-best") || 0) || 0); } catch { /* private browsing */ }
 let jumpElapsed = 0;
@@ -126,6 +126,11 @@ let jumpActive = false;
 const jumpDuration = 0.82;
 const laneWidth=2.9;
 const hazards = new HazardSystem(scene);
+statusEl.hidden=false;
+statusEl.textContent="RUSH CITY · SOKAKLAR SENİN!";
+restartButton.hidden=false;
+restartButton.textContent="KOŞUYA BAŞLA";
+pauseButton.textContent="▶";
 function action(key:string){
  if(dead&&key!=="r"&&key!==" ")return;
  if(paused&&key!=="p"&&key!=="Escape")return;
@@ -133,10 +138,10 @@ function action(key:string){
  if(key==="ArrowRight"||key==="d"){const prev=lane;lane=Math.min(1,lane+1);if(prev!==lane)audio.lane();}
  if((key==="ArrowUp"||key===" "||key==="w")&&!jumpActive&&slide<=0){jumpActive=true;jumpElapsed=0;jump=jumpDuration;audio.jump();}
  if((key==="ArrowDown"||key==="s")&&slide<=0&&!jumpActive)slide=0.72;audio.slide();
- if(key==="p"||key==="Escape"){paused=!paused;pauseButton.textContent=paused?"▶":"Ⅱ";if(!dead){statusEl.hidden=!paused;statusEl.textContent="DURAKLATILDI · P İLE DEVAM";}}
- if(dead&&(key==="r"||key===" ")){restartButton.hidden=true;dead=false;paused=false;pauseButton.textContent="Ⅱ";distance=0;coins=0;lane=0;laneVisual=0;jump=0;slide=0;jumpActive=false;jumpElapsed=0;hazards.reset();statusEl.hidden=true;audio.start();}
+ if(key==="p"||key==="Escape"){paused=!paused;pauseButton.textContent=paused?"▶":"Ⅱ";if(!dead){statusEl.hidden=!paused;if(paused)statusEl.textContent="DURAKLATILDI · P İLE DEVAM";else{restartButton.hidden=true;audio.start();}}}
+ if(dead&&(key==="r"||key===" ")){restartButton.hidden=true;restartButton.textContent="YENİDEN OYNA";dead=false;paused=false;pauseButton.textContent="Ⅱ";distance=0;coins=0;lane=0;laneVisual=0;jump=0;slide=0;jumpActive=false;jumpElapsed=0;hazards.reset();statusEl.hidden=true;audio.start();}
 }
-restartButton.addEventListener("click",()=>{audio.unlock();action("r");});
+restartButton.addEventListener("click",()=>{audio.unlock();if(dead)action("r");else if(paused)action("p");});
 pauseButton.addEventListener("click",()=>{audio.unlock();action("p");});
 document.querySelectorAll<HTMLButtonElement>("[data-action]").forEach(button=>button.addEventListener("pointerdown",e=>{e.preventDefault();audio.unlock();action(button.dataset.action||"");}));
 window.addEventListener("keydown",e=>{if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"," "].includes(e.key))e.preventDefault();if(!e.repeat){audio.unlock();action(e.key);}});
@@ -192,6 +197,7 @@ function frame(){
     try { localStorage.setItem("rush-city-best",String(best)); } catch { /* storage disabled */ }
     statusEl.hidden = false;
     restartButton.hidden = false;
+    restartButton.textContent = "YENİDEN OYNA";
     statusEl.textContent = "KOŞU BİTTİ · "+Math.floor(distance)+" m · REKOR "+best+" m · R İLE TEKRAR";
   }
   scoreEl.textContent=Math.floor(distance)+" m · REKOR "+best+" m";
