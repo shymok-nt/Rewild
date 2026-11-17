@@ -1,15 +1,14 @@
-import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
+import "@babylonjs/loaders/glTF";
+import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
-import { Color3 } from "@babylonjs/core/Maths/math.color";
-import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 import type { Scene } from "@babylonjs/core/scene";
 
 /**
- * A compact procedural axe with a deliberate grip pivot at (0,0,0).
- * Geometry is independent from the hand socket, so future GLB tools can
- * replace the model without rewriting the attachment or harvesting logic.
+ * Real Sketchfab Axe.glb. Its mesh (OuterContour) is Z-long, with the
+ * narrow shaft at positive Z and the wider blade at negative Z.
+ * The socket is the actual hand grip, not the model's bounding-box centre.
  */
 export async function equipAxe(
   scene: Scene,
@@ -17,52 +16,35 @@ export async function equipAxe(
   isHarvesting: () => boolean = () => false,
   getRightHand: () => AbstractMesh | null = () => null,
 ): Promise<void> {
+  const imported = await SceneLoader.ImportMeshAsync("", "/models/", "Axe.glb", scene);
+  if (scene.isDisposed) {
+    imported.meshes.forEach(mesh => mesh.dispose());
+    return;
+  }
+  const visible = imported.meshes.filter(mesh => mesh.getTotalVertices() > 0);
+  if (!visible.length) throw new Error("Axe.glb has no geometry");
+
   const socket = new TransformNode("equipment-right-hand-socket", scene);
   socket.parent = player;
-  socket.position.set(0.52, 1.03, 0.18);
+  socket.position.set(-0.52, 1.03, 0.18);
 
-  const tool = new TransformNode("procedural-axe-grip", scene);
-  tool.parent = socket;
+  const model = new TransformNode("axe-asset-grip-offset", scene);
+  model.parent = socket;
+  // Source GLB is Z-long; convert the handle to the game's vertical axis.
+  // The positive-Z narrow shaft points downward, negative-Z blade upward.
+  const modelScale = 0.075;
+  model.scaling.setAll(modelScale);
+  model.rotation.x = Math.PI / 2;
 
-  const wood = new StandardMaterial("axe-handle-wood", scene);
-  wood.diffuseColor = Color3.FromHexString("#755137");
-  wood.specularColor = Color3.FromHexString("#24180f");
-  const metal = new StandardMaterial("axe-head-steel", scene);
-  metal.diffuseColor = Color3.FromHexString("#89969b");
-  metal.specularColor = Color3.FromHexString("#bdc8ca");
-  const edge = new StandardMaterial("axe-blade-edge", scene);
-  edge.diffuseColor = Color3.FromHexString("#b9c3c3");
+  // The actual mesh bounds are X [-2.939,2.939], Z [-6.843,6.843].
+  // Its narrow handle is on positive Z, offset toward positive X.
+  // Put the grip at (1.55,0,4.8) in the original mesh coordinates.
+  model.position.set(-1.55 * modelScale, 4.8 * modelScale, 0);
 
-  // Hand grips the shaft at y=0. The heavy head is above the fist.
-  const handle = MeshBuilder.CreateCylinder("axe-wooden-shaft", {
-    height: 0.69, diameterTop: 0.052, diameterBottom: 0.064, tessellation: 8,
-  }, scene);
-  handle.parent = tool;
-  handle.position.y = 0.10;
-  handle.material = wood;
-
-  const neck = MeshBuilder.CreateBox("axe-metal-collar", {
-    width: 0.115, height: 0.14, depth: 0.12,
-  }, scene);
-  neck.parent = tool;
-  neck.position.y = 0.405;
-  neck.material = metal;
-
-  const blade = MeshBuilder.CreateBox("axe-metal-blade", {
-    width: 0.085, height: 0.22, depth: 0.28,
-  }, scene);
-  blade.parent = tool;
-  blade.position.set(0, 0.42, 0.19);
-  blade.material = metal;
-
-  const cuttingEdge = MeshBuilder.CreateBox("axe-cutting-edge", {
-    width: 0.09, height: 0.26, depth: 0.035,
-  }, scene);
-  cuttingEdge.parent = tool;
-  cuttingEdge.position.set(0, 0.42, 0.345);
-  cuttingEdge.material = edge;
-
-  for (const mesh of [handle, neck, blade, cuttingEdge]) mesh.isPickable = false;
+  for (const mesh of imported.meshes) {
+    if (!mesh.parent) mesh.parent = model;
+    mesh.isPickable = false;
+  }
 
   let attachedHand: AbstractMesh | null = null;
   const observer = scene.onBeforeRenderObservable.add(() => {
@@ -70,27 +52,18 @@ export async function equipAxe(
     if (hand && hand !== attachedHand) {
       attachedHand = hand;
       socket.parent = hand;
-      // The GLB's right arm is on negative X. Place the grip just outside
-      // the palm; avoid offsetting the entire model from its centre.
-      const bounds = hand.getBoundingInfo().boundingBox;
-      const palm = bounds.minimum.add(bounds.maximum).scale(0.5);
-      // Grip pivot sits in the palm; the shaft crosses the hand rather than
-      // being mounted to the outer side of the forearm.
-      socket.position.set(palm.x, palm.y, palm.z);
-      // +Z is the character-facing direction; lean the shaft forward.
-      socket.rotation.set(0.68, 0, 0.06);
-      console.info("[Rewild] Procedural axe mounted at Hand_R grip");
+      // The hand node itself is a mesh; attach at its geometric palm centre.
+      const box = hand.getBoundingInfo().boundingBox;
+      const palm = box.minimum.add(box.maximum).scale(0.5);
+      socket.position.copyFrom(palm);
+      console.info("[Rewild] Sketchfab axe attached by shaft grip to Hand_R");
     }
-    if (!attachedHand) {
-      socket.rotation.x = isHarvesting() ? -0.45 : 0.12;
-    }
+    // Positive forward pitch keeps the blade in front of the torso.
+    socket.rotation.set(isHarvesting() ? 0.40 : 0.68, 0, 0.04);
   });
 
   scene.onDisposeObservable.add(() => {
     scene.onBeforeRenderObservable.remove(observer);
     socket.dispose(false, true);
-    wood.dispose();
-    metal.dispose();
-    edge.dispose();
   });
 }
