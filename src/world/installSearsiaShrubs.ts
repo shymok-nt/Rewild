@@ -19,7 +19,16 @@ function clear(x: number, z: number): boolean {
 }
 export async function installSearsiaShrubs(scene: Scene, trees: readonly ForestTree[]): Promise<void> {
   try {
-    const result = await SceneLoader.ImportMeshAsync("", "/models/searsia_lucida/", "searsia_lucida_1k.gltf", scene);
+    // Prefer the locally prepared model; if the asset preparation failed,
+    // fetch the public Poly Haven glTF directly instead of leaving the scene empty.
+    const localRoot = "/models/searsia_lucida/";
+    const remoteRoot = "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/searsia_lucida/";
+    let root = localRoot;
+    try {
+      const response = await fetch(localRoot + "searsia_lucida_1k.gltf", { method: "HEAD" });
+      if (!response.ok) root = remoteRoot;
+    } catch { root = remoteRoot; }
+    const result = await SceneLoader.ImportMeshAsync("", root, "searsia_lucida_1k.gltf", scene);
     if (scene.isDisposed) return;
     const meshes = validImportedMeshes(result.meshes, "Searsia");
     if (!meshes.length) throw new Error("Searsia glTF has no geometry");
