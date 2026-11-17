@@ -26,6 +26,7 @@ export async function loadSurvivor(scene: Scene, parent: TransformNode) {
   const elbow = result.meshes.find(mesh => mesh.name === "Elbow_R") ?? null;
   const shoulderRest = shoulder?.rotation.clone();
   const elbowRest = elbow?.rotation.clone();
+  const handRest = rightHand?.rotation.clone();
   let chopTime = 1;
   let wasHarvesting = false;
   const animations = new Map<string, AnimationGroup>();
@@ -55,10 +56,14 @@ export async function loadSurvivor(scene: Scene, parent: TransformNode) {
         // One raised-arm chop, synchronized with the 550ms harvest window.
         chopTime = Math.min(1, chopTime + dt / 0.55);
         const swing = Math.sin(chopTime * Math.PI);
-        if (shoulder && shoulderRest) shoulder.rotation.copyFrom(shoulderRest).addInPlaceFromFloats(-0.95 * swing, 0, -0.22 * swing);
-        if (elbow && elbowRest) elbow.rotation.copyFrom(elbowRest).addInPlaceFromFloats(-0.42 * swing, 0, 0);
+        if (shoulder && shoulderRest) shoulder.rotation.copyFrom(shoulderRest).addInPlaceFromFloats(-0.48 - 0.75 * swing, 0, -0.10);
+        if (elbow && elbowRest) elbow.rotation.copyFrom(elbowRest).addInPlaceFromFloats(-0.72 + 0.35 * swing, 0, 0);
+        if (rightHand && handRest) rightHand.rotation.copyFrom(handRest).addInPlaceFromFloats(0.20, 0, 0);
       } else {
         play(moving ? (sprinting ? "run" : "walk") : "idle");
+        if (shoulder && shoulderRest) shoulder.rotation.copyFrom(shoulderRest).addInPlaceFromFloats(-0.48, 0, -0.10);
+        if (elbow && elbowRest) elbow.rotation.copyFrom(elbowRest).addInPlaceFromFloats(-0.72, 0, 0);
+        if (rightHand && handRest) rightHand.rotation.copyFrom(handRest).addInPlaceFromFloats(0.20, 0, 0);
       }
     },
     dispose() {
