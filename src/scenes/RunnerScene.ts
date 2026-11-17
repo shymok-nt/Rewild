@@ -117,8 +117,32 @@ export class RunnerScene extends Phaser.Scene {
     this.distance += dt * this.speed;
     this.pickupGlow = Math.max(0, this.pickupGlow - dt);
     if (this.distance > this.nextSpawn) {
-      this.obstacles.push({ lane: Phaser.Math.Between(-1, 1), z: this.distance + 65, kind: Phaser.Math.Between(0, 3), collected: false });
-      this.nextSpawn = this.distance + Phaser.Math.Between(17, 24);
+      // Pattern-based spawns: always leave at least one safe lane.
+      const z = this.distance + 65;
+      const lane = Phaser.Math.Between(-1, 1);
+      const pattern = Phaser.Math.Between(0, 4);
+      if (pattern === 0) {
+        // Collectible trail encourages lane changes.
+        for (let i = 0; i < 3; i++) {
+          this.obstacles.push({ lane, z: z + i * 5, kind: 3, collected: false });
+        }
+      } else if (pattern === 1 && this.distance > 140) {
+        // Two blocked lanes, one clear escape route.
+        const safeLane = Phaser.Math.Between(-1, 1);
+        for (let l = -1; l <= 1; l++) {
+          if (l !== safeLane) this.obstacles.push({ lane: l, z, kind: 2, collected: false });
+        }
+        this.obstacles.push({ lane: safeLane, z: z + 6, kind: 3, collected: false });
+      } else if (pattern === 2) {
+        this.obstacles.push({ lane, z, kind: 0, collected: false });
+        this.obstacles.push({ lane, z: z + 8, kind: 3, collected: false });
+      } else if (pattern === 3) {
+        this.obstacles.push({ lane, z, kind: 1, collected: false });
+        this.obstacles.push({ lane, z: z + 8, kind: 3, collected: false });
+      } else {
+        this.obstacles.push({ lane, z, kind: 2, collected: false });
+      }
+      this.nextSpawn = this.distance + Phaser.Math.Between(24, 32);
     }
     for (const o of this.obstacles) {
       if (!o.collected && o.z >= previousDistance && o.z <= this.distance + 2.5 && o.lane === this.lane) {
@@ -129,6 +153,7 @@ export class RunnerScene extends Phaser.Scene {
       }
     }
     this.obstacles = this.obstacles.filter(o => o.z > this.distance - 6);
+    if (this.gameOver) return;
     this.runClock += dt * 12;
     this.draw();
     this.hud.setText(`MESAFE ${Math.floor(this.distance)} m   •   ALTIN ${this.coins}   •   KOMBO ${this.combo}   •   HIZ ${Math.round(this.speed)}   •   ${Math.round(this.game.loop.actualFps)} FPS`);
