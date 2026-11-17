@@ -4,6 +4,7 @@ import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
 import { DirectionalLight } from "@babylonjs/core/Lights/directionalLight";
 import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator";
+import { PhotoDome } from "@babylonjs/core/Helpers/photoDome";
 import { Scene } from "@babylonjs/core/scene";
 import type { Engine } from "@babylonjs/core/Engines/engine";
 import { createPlayer } from "../player/createPlayer";
@@ -25,6 +26,16 @@ export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
   const camera = new ArcRotateCamera("third-person", -Math.PI / 2.5, Math.PI / 3.1, 12, new Vector3(0, 2, 0), scene);
   camera.attachControl(canvas, true);
   camera.wheelPrecision = 45;
+
+  // DayEnvironmentHDRI114: equirectangular daytime panorama.
+  // A lightweight JPG dome is used instead of importing Blender/USD/Godot files.
+  // Note: the original panorama contains a rooftop in its lower hemisphere.
+  const sky = new PhotoDome("day-environment-sky", "/models/DayEnvironmentHDRI114_1K_TONEMAPPED.jpg", {
+    resolution: 32,
+    size: 900,
+    useDirectMapping: true,
+  }, scene);
+  sky.mesh.isPickable = false;
 
   const ambient = new HemisphericLight("skylight", new Vector3(0, 1, 0), scene);
   ambient.intensity = 0.72;
