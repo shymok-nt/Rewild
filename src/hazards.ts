@@ -22,7 +22,27 @@ const panelGeo = new THREE.BoxGeometry(1, 1, 0.12);
 const wheelGeo = new THREE.TorusGeometry(0.36, 0.12, 8, 16);
 const coinGeo = new THREE.TorusGeometry(0.38, 0.12, 10, 22);
 const coinCoreGeo = new THREE.CylinderGeometry(0.31, 0.31, 0.06, 22);
-const vanGeo = new THREE.BoxGeometry(1.8, 1.25, 2.1);
+const vanProfile = new THREE.Shape();
+vanProfile.moveTo(-0.88,0);
+vanProfile.lineTo(0.88,0);
+vanProfile.lineTo(0.88,0.83);
+vanProfile.quadraticCurveTo(0.85,1.18,0.52,1.22);
+vanProfile.lineTo(-0.52,1.22);
+vanProfile.quadraticCurveTo(-0.85,1.18,-0.88,0.83);
+vanProfile.closePath();
+const vanGeo = new THREE.ExtrudeGeometry(vanProfile,{
+  depth:1.95,steps:1,bevelEnabled:true,bevelThickness:0.07,bevelSize:0.07,bevelSegments:2,curveSegments:8
+});
+const cabinProfile = new THREE.Shape();
+cabinProfile.moveTo(-0.7,0);
+cabinProfile.lineTo(0.7,0);
+cabinProfile.quadraticCurveTo(0.63,0.73,0.35,0.83);
+cabinProfile.lineTo(-0.35,0.83);
+cabinProfile.quadraticCurveTo(-0.63,0.73,-0.7,0);
+cabinProfile.closePath();
+const cabinGeo = new THREE.ExtrudeGeometry(cabinProfile,{
+  depth:1.05,steps:1,bevelEnabled:true,bevelThickness:0.05,bevelSize:0.05,bevelSegments:2
+});
 
 function mesh(parent: THREE.Group, geo: THREE.BufferGeometry, mat: THREE.Material,
  x = 0, y = 0, z = 0): THREE.Mesh {
@@ -72,11 +92,10 @@ function createVisual(kind: HazardKind): THREE.Group {
     }
   } else {
     // Stylized city delivery van with curved cabin, grille, lamps and wheels.
-    const body = mesh(g, vanGeo, orange, 0, 1.05);
-    const cabin = mesh(g, new THREE.SphereGeometry(0.75, 16, 10), white, 0, 1.47, -0.35);
-    cabin.scale.set(1.05, 0.7, 0.8);
-    const windshield = mesh(g, new THREE.SphereGeometry(0.67, 14, 8), windowMat, 0, 1.51, -0.47);
-    windshield.scale.set(0.97, 0.57, 0.55);
+    mesh(g, vanGeo, orange, 0, 0.35, -0.97);
+    mesh(g, cabinGeo, white, 0, 1.35, -0.68);
+    bar(g, windowMat, 0, 1.72, -0.78, 1.03, 0.55, 0.08);
+    bar(g, steel, 0, 1.35, -0.77, 1.22, 0.09, 0.1);
     for (const x of [-0.85, 0.85]) for (const z of [-0.65, 0.65]) {
       const wheel = mesh(g, wheelGeo, rubber, x, 0.4, z);
       wheel.rotation.y = Math.PI / 2;
