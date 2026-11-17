@@ -1,24 +1,59 @@
 # RUSH CITY
 
-A lightweight 2.5D endless-runner prototype made with Phaser 3, TypeScript and Vite.
+A browser-based 3D endless runner built with **Three.js, TypeScript and Vite**.
 
-## Run
+> **Development status:** This is an early playable 3D foundation, **not** a finished Subway Surfers-quality game. The current imported character is a temporary animated GLB and the environment is still being art-directed.
 
-```bash
+## Requirements
+
+- Node.js 22 or newer
+- A modern WebGL2-capable browser
+- Hardware acceleration enabled
+
+## Start on Windows
+
+```powershell
+git pull origin main
 npm install
 npm run dev
 ```
 
+Open the localhost URL shown by Vite.
+
+## Build
+
+```powershell
+npm run typecheck
+npm run build
+npm run preview
+```
+
+The project includes a GitHub Actions build workflow. A successful workflow run should be verified before distributing the game.
+
 ## Controls
 
-- A/D or Left/Right: change lane
-- Space / Up: jump
-- Down / S: slide
-- R: restart
-- On touch screens: swipe left/right/up/down
+| Input | Action |
+| --- | --- |
+| Left / A | Move one lane left |
+| Right / D | Move one lane right |
+| Up / W / Space | Jump |
+| Down / S | Slide |
+| P / Escape | Pause or resume |
+| R | Restart after a collision |
+| Swipe | Move, jump or slide on touch devices |
 
-## Phase 1
+## Architecture
 
-Three lanes, procedural perspective road, animated player, skyline and roadside buildings, keyboard/touch controls, responsive viewport, FPS display and a lightweight render loop. No imported 3D assets, physics engine, or large textures.
+- `src/main.ts`: Three.js renderer, camera, input, avatar, main game loop and HUD
+- `src/city.ts`: recycled facade blocks, shop trim, windows and street trees
+- `src/street.ts`: recycled street furniture, lamps and planters
+- `src/hazards.ts`: pooled coins and obstacles, spawn patterns and collision rules
+- `public/assets/character.glb`: temporary animated example asset from the Three.js example library
 
-Phase 2 will add obstacles, collisions, pickups and score. This prototype intentionally has no fail state yet.
+## Visual and technical roadmap
+
+The existing character and some scenery are placeholders for the final art direction. Before release the project needs a properly licensed human runner with run/jump/slide animation clips, polished art assets, mobile tuning, sound design, accessibility options, and verified playtesting. Do not market the current scene as a finished commercial game.
+
+## Credits
+
+Temporary character GLB: `RobotExpressive.glb` from the [Three.js examples](https://github.com/mrdoob/three.js/tree/master/examples/models/gltf/RobotExpressive). Review its original asset licensing and attribution before redistribution.
