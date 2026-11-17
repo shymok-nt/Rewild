@@ -89,7 +89,7 @@ If the repository is already cloned, use `git pull origin main` instead of cloni
 | `src/audio.ts` | Web Audio synthesized sound effects and mute preference |
 | `src/effects.ts` | Recycled coin pickup particle effects |
 | `tests/rules.test.mjs` | Node test suite for pure gameplay rules |
-| `public/assets/character.glb` | **Temporary** RobotExpressive animated character |
+| `public/assets/character.glb` | Original articulated procedural human runner |
 | `.github/workflows/build.yml` | GitHub Actions test/build pipeline |
 | `README.md` | Short setup and architecture overview |
 | `RUSH_CITY_PROJECT_GUIDE.md` | **This handoff and project continuity document** |
@@ -287,3 +287,12 @@ Her önemli geliştirme sonrasında bu bölümün altına tarih, değişen dosya
 - This is a rendering stability improvement, **not** a completed human character or city-asset upgrade. No new third-party models were downloaded or installed in this change.
 - **Validation pending:** No local build, browser playtest, or AMD GPU benchmark was run for this specific commit. Run `npm run test`, `npm run typecheck`, `npm run build` and test the shadow transitions in browser.
 - Next: source and verify commercial-use rights for a stylized human runner and animation clips, then integrate and test; improve city art without sacrificing FPS.
+
+
+#### 2026-11-18 — Original animated human runner
+
+- Added `src/humanRunner.ts` with an original low-poly human silhouette, jacket, hair, backpack, limbs and shoes. All geometry/materials are authored in code; no third-party downloads, external licenses or textures.
+- Replaced temporary GLTFLoader/RobotExpressive runtime in `src/main.ts` with the procedural character. Separate run, jump and slide poses are animated via joint transforms, with smooth transition toward poses. The avatar no longer scales its whole Y axis to slide.
+- Commits: `95e9c30a` (runner implementation), `b6513960` (runtime integration).
+- This is an original procedural articulated character, **not** a professional skinned/skeletal GLB with authored animation clips. A polished artist-made character remains a future quality goal.
+- **Validation:** Browser animation, TypeScript compilation, CI and AMD FPS have not yet been verified for this change. Inspect foot-ground alignment, collision with overhead gates, sliding silhouette and character facing direction in browser.
