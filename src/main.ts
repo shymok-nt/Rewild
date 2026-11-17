@@ -68,6 +68,7 @@ scene.add(playerShadow);
 const loader = new GLTFLoader();
 let runnerModel: THREE.Object3D | null = null;
 let runnerMixer: THREE.AnimationMixer | null = null;
+let runnerBaseY = 0;
 const joints = new Map<string, THREE.Object3D>();
 let runPhase = 0;
 let poseBlend = 0;
@@ -77,7 +78,7 @@ function animateRunner(dt: number, pose: "run" | "jump" | "slide", speed: number
     runnerMixer.update(dt * Math.max(0.85, speed / 13));
     const slide = pose === "slide" ? 1 : 0;
     poseBlend += (slide - poseBlend) * (1 - Math.exp(-dt * 12));
-    runnerModel.position.y = -poseBlend * 0.65;
+    runnerModel.position.y = runnerBaseY - poseBlend * 0.65;
     runnerModel.rotation.x = -poseBlend * 0.35;
     return;
   }
@@ -110,7 +111,8 @@ Promise.all([loader.loadAsync("/assets/real-runner.glb"), loadWorldAssets(scene)
     const scale = 2.25 / height;
     runnerModel.scale.setScalar(scale);
     // Align model feet with ground regardless of source model units.
-    runnerModel.position.y = -bounds.min.y * scale;
+    runnerBaseY = -bounds.min.y * scale;
+    runnerModel.position.y = runnerBaseY;
     if (gltf.animations.length > 0) {
       runnerMixer = new THREE.AnimationMixer(runnerModel);
       runnerMixer.clipAction(gltf.animations[0]).play();
