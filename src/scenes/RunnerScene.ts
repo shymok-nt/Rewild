@@ -63,7 +63,11 @@ export class RunnerScene extends Phaser.Scene {
 
     this.overlay = this.add.text(W / 2, H / 2, "", { fontFamily: "Arial", fontSize: "28px", color: "#ffffff", align: "center", stroke: "#182b49", strokeThickness: 7 }).setOrigin(0.5).setDepth(30).setVisible(false);
     this.stage.add([...this.children.list].filter(child => child !== this.stage));
-    const resize = (size: { width: number; height: number }) => this.stage.setScale(size.width / W, size.height / H);
+    const resize = (size: { width: number; height: number }) => {
+      const scale = Math.max(size.width / W, size.height / H);
+      this.stage.setScale(scale);
+      this.stage.setPosition((size.width - W * scale) / 2, (size.height - H * scale) / 2);
+    };
     this.scale.on("resize", resize);
     this.events.once("shutdown", () => this.scale.off("resize", resize));
     resize(this.scale.gameSize);
