@@ -56,13 +56,13 @@ export function buildEnvironment(scene: Scene, forestTrees: ForestTree[] = []): 
   const ground = MeshBuilder.CreateGround("walkable-meadow", { width: 140, height: 140, subdivisions: 4 }, scene);
   // Grass004 1K PBR maps (ambientCG). All texture assets live in
   // public/models; the 3D ground mesh/collisions remain unchanged.
-  const groundMaterial = new PBRMaterial("grass004-ground-pbr", scene);
+  const groundMaterial = new PBRMaterial("forest-ground-pbr", scene);
   groundMaterial.metallic = 0;
   groundMaterial.roughness = 1;
-  const colorMap = new Texture("/models/grass-color.jpg", scene);
-  const normalMap = new Texture("/models/grass-normal.jpg", scene);
-  const ormMap = new Texture("/models/grass-orm.jpg", scene);
-  for (const map of [colorMap, normalMap, ormMap]) {
+  const colorMap = new Texture("/models/forest-ground-color.jpg", scene, false, false, Texture.TRILINEAR_SAMPLINGMODE, undefined, () => { colorMap.updateURL("/models/grass-color.jpg"); });
+  const normalMap = new Texture("/models/forest-ground-normal.png", scene, false, false, Texture.TRILINEAR_SAMPLINGMODE, undefined, () => { normalMap.updateURL("/models/grass-normal.jpg"); });
+  const roughnessMap = new Texture("/models/forest-ground-roughness.jpg", scene, false, false, Texture.TRILINEAR_SAMPLINGMODE, undefined, () => { roughnessMap.updateURL("/models/grass-orm.jpg"); });
+  for (const map of [colorMap, normalMap, roughnessMap]) {
     map.uScale = 12;
     map.vScale = 12;
     map.wrapU = Texture.WRAP_ADDRESSMODE;
@@ -70,10 +70,12 @@ export function buildEnvironment(scene: Scene, forestTrees: ForestTree[] = []): 
   }
   groundMaterial.albedoTexture = colorMap;
   groundMaterial.bumpTexture = normalMap;
-  groundMaterial.metallicTexture = ormMap;
-  groundMaterial.useRoughnessFromMetallicTextureGreen = true;
-  groundMaterial.useMetallnessFromMetallicTextureBlue = true;
-  groundMaterial.useAmbientOcclusionFromMetallicTextureRed = true;
+  groundMaterial.metallicTexture = roughnessMap;
+  groundMaterial.useRoughnessFromMetallicTextureGreen = false;
+  groundMaterial.useRoughnessFromMetallicTextureAlpha = false;
+  groundMaterial.useMetallnessFromMetallicTextureBlue = false;
+  groundMaterial.useAmbientOcclusionFromMetallicTextureRed = false;
+  groundMaterial.roughness = 0.95;
   groundMaterial.invertNormalMapY = false;
   ground.material = groundMaterial;
 
