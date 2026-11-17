@@ -5,14 +5,19 @@ import { createCity } from "./city";
 import { HazardSystem } from "./hazards";
 import { createStreetDetails } from "./street";
 import { createGroundMaterials } from "./ground";
+import { GameAudio } from "./audio";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("App container not found");
-app.innerHTML = `<div id="hud"><strong>RUSH CITY</strong><span id="score">0 m</span><span id="coins">● 0</span></div><div id="instructions">← → ŞERİT &nbsp; · &nbsp; ↑ ZIPLA &nbsp; · &nbsp; ↓ KAY &nbsp; · &nbsp; P DURAKLAT</div><div id="mobile-controls"><button data-action="ArrowLeft" aria-label="Sola geç">◀</button><button data-action="ArrowUp" aria-label="Zıpla">↑</button><button data-action="ArrowDown" aria-label="Kay">↓</button><button data-action="ArrowRight" aria-label="Sağa geç">▶</button></div><button id="pause-button" aria-label="Duraklat">Ⅱ</button><div id="status" hidden></div>`;
+app.innerHTML = `<div id="hud"><strong>RUSH CITY</strong><span id="score">0 m</span><span id="coins">● 0</span></div><div id="instructions">← → ŞERİT &nbsp; · &nbsp; ↑ ZIPLA &nbsp; · &nbsp; ↓ KAY &nbsp; · &nbsp; P DURAKLAT</div><div id="mobile-controls"><button data-action="ArrowLeft" aria-label="Sola geç">◀</button><button data-action="ArrowUp" aria-label="Zıpla">↑</button><button data-action="ArrowDown" aria-label="Kay">↓</button><button data-action="ArrowRight" aria-label="Sağa geç">▶</button></div><button id="pause-button" aria-label="Duraklat">Ⅱ</button><button id="sound-button" aria-label="Sesi aç veya kapat">♫</button><div id="status" hidden></div>`;
 const scoreEl = document.querySelector<HTMLElement>("#score")!;
 const coinsEl = document.querySelector<HTMLElement>("#coins")!;
 const statusEl = document.querySelector<HTMLElement>("#status")!;
 const pauseButton = document.querySelector<HTMLButtonElement>("#pause-button")!;
+const soundButton = document.querySelector<HTMLButtonElement>("#sound-button")!;
+const audio = new GameAudio();
+soundButton.textContent = audio.isMuted ? "♪̸" : "♫";
+soundButton.addEventListener("click",()=>{audio.setMuted(!audio.isMuted);soundButton.textContent=audio.isMuted?"♪̸":"♫";audio.unlock();});
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
 renderer.shadowMap.enabled = true;
@@ -120,19 +125,19 @@ const hazards = new HazardSystem(scene);
 function action(key:string){
  if(dead&&key!=="r"&&key!==" ")return;
  if(paused&&key!=="p"&&key!=="Escape")return;
- if(key==="ArrowLeft"||key==="a")lane=Math.max(-1,lane-1);
- if(key==="ArrowRight"||key==="d")lane=Math.min(1,lane+1);
- if((key==="ArrowUp"||key===" "||key==="w")&&!jumpActive&&slide<=0){jumpActive=true;jumpElapsed=0;jump=jumpDuration;}
- if((key==="ArrowDown"||key==="s")&&slide<=0&&!jumpActive)slide=0.72;
+ if(key==="ArrowLeft"||key==="a"){const prev=lane;lane=Math.max(-1,lane-1);if(prev!==lane)audio.lane();}
+ if(key==="ArrowRight"||key==="d"){const prev=lane;lane=Math.min(1,lane+1);if(prev!==lane)audio.lane();}
+ if((key==="ArrowUp"||key===" "||key==="w")&&!jumpActive&&slide<=0){jumpActive=true;jumpElapsed=0;jump=jumpDuration;audio.jump();}
+ if((key==="ArrowDown"||key==="s")&&slide<=0&&!jumpActive)slide=0.72;audio.slide();
  if(key==="p"||key==="Escape"){paused=!paused;pauseButton.textContent=paused?"▶":"Ⅱ";if(!dead){statusEl.hidden=!paused;statusEl.textContent="DURAKLATILDI · P İLE DEVAM";}}
- if(dead&&(key==="r"||key===" ")){dead=false;paused=false;pauseButton.textContent="Ⅱ";distance=0;coins=0;lane=0;laneVisual=0;jump=0;slide=0;jumpActive=false;jumpElapsed=0;hazards.reset();statusEl.hidden=true;}
+ if(dead&&(key==="r"||key===" ")){dead=false;paused=false;pauseButton.textContent="Ⅱ";distance=0;coins=0;lane=0;laneVisual=0;jump=0;slide=0;jumpActive=false;jumpElapsed=0;hazards.reset();statusEl.hidden=true;audio.start();}
 }
-pauseButton.addEventListener("click",()=>action("p"));
-document.querySelectorAll<HTMLButtonElement>("[data-action]").forEach(button=>button.addEventListener("pointerdown",e=>{e.preventDefault();action(button.dataset.action||"");}));
-window.addEventListener("keydown",e=>{if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"," "].includes(e.key))e.preventDefault();if(!e.repeat)action(e.key);});
+pauseButton.addEventListener("click",()=>{audio.unlock();action("p");});
+document.querySelectorAll<HTMLButtonElement>("[data-action]").forEach(button=>button.addEventListener("pointerdown",e=>{e.preventDefault();audio.unlock();action(button.dataset.action||"");}));
+window.addEventListener("keydown",e=>{if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"," "].includes(e.key))e.preventDefault();if(!e.repeat){audio.unlock();action(e.key);}});
 document.addEventListener("visibilitychange",()=>{if(document.hidden&&!dead&&!paused){paused=true;pauseButton.textContent="▶";statusEl.hidden=false;statusEl.textContent="DURAKLATILDI · P İLE DEVAM";}});
 let touchStart:{x:number,y:number}|null=null;
-renderer.domElement.addEventListener("pointerdown",e=>touchStart={x:e.clientX,y:e.clientY});
+renderer.domElement.addEventListener("pointerdown",e=>{audio.unlock();touchStart={x:e.clientX,y:e.clientY};});
 renderer.domElement.addEventListener("pointerup",e=>{if(!touchStart)return;const dx=e.clientX-touchStart.x,dy=e.clientY-touchStart.y;touchStart=null;if(Math.abs(dx)>35&&Math.abs(dx)>Math.abs(dy))action(dx>0?"ArrowRight":"ArrowLeft");else if(Math.abs(dy)>35)action(dy<0?"ArrowUp":"ArrowDown");});
 function resize(){const w=Math.max(1,app!.clientWidth),h=Math.max(1,app!.clientHeight);camera.aspect=w/h;camera.fov=h>w?72:62;camera.updateProjectionMatrix();renderer.setSize(w,h);}
 window.addEventListener("resize",resize);resize();
@@ -173,7 +178,9 @@ function frame(){
   for(const stripe of stripes){stripe.position.z+=dt*speed;if(stripe.position.z>12)stripe.position.z-=230;}
   const collision = hazards.update(dt, distance, speed, lane, playerRoot.position.y, slide > 0);
   coins += collision.coins;
+  if(collision.coins>0)audio.coin();
   if (collision.crashed) {
+    audio.crash();
     dead = true;
     best=Math.max(best,Math.floor(distance));
     localStorage.setItem("rush-city-best",String(best));
