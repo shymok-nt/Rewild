@@ -2,7 +2,6 @@ import "@babylonjs/loaders/glTF";
 import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
-import { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 import type { Scene } from "@babylonjs/core/scene";
 import type { HarvestNode } from "../game/harvesting";
 
@@ -47,23 +46,26 @@ export async function installRockModels(scene: Scene, nodes: readonly HarvestNod
     const parentScaleY = anchor.parent?.getWorldMatrix().getRow(1)?.length() ?? 1;
     anchor.position.y += (0.015 - minY) / Math.max(0.0001, parentScaleY);
   };
-  const originals = scene.meshes.filter(mesh => mesh.name.startsWith("rock-") && mesh.name !== "rock-source");
+  const originals = scene.meshes.filter(mesh =>
+    mesh.name.startsWith("rock-") && mesh.name !== "rock-source"
+  );
   // The source rock is about 8 world units wide; scale to original boulder size.
   for (const original of originals) {
-    if (!(original instanceof AbstractMesh)) continue;
-    const anchor = create("glb-" + original.name, new TransformNode("rock-placement-" + original.name, scene), 0.18);
-    anchor.parent!.position.copyFrom(original.position);
-    anchor.parent!.rotation.copyFrom(original.rotation);
-    anchor.parent!.scaling.copyFrom(original.scaling);
+    if (!(original instanceof Mesh)) continue;
+    const placement = new TransformNode("rock-placement-" + original.name, scene);
+    const anchor = create("glb-" + original.name, placement, 0.18);
+    placement.position.copyFrom(original.position);
+    placement.rotation.copyFrom(original.rotation);
+    placement.scaling.copyFrom(original.scaling);
     anchor.position.set(0, 0, 0);
     const resource = nodes.find(node => node.id.startsWith("boulder-") &&
       Math.abs(node.position.x - original.position.x) < 0.01 &&
       Math.abs(node.position.z - original.position.z) < 0.01);
     if (resource) {
       // Parent the complete placement so depletion and relocation affect the GLB.
-      anchor.parent!.parent = resource.visual;
-      anchor.parent!.position.x = 0;
-      anchor.parent!.position.z = 0;
+      placement.parent = resource.visual;
+      placement.position.x = 0;
+      placement.position.z = 0;
     }
     settleOnGround(anchor);
     original.dispose();

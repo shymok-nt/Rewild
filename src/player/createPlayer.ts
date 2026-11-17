@@ -11,6 +11,7 @@ export interface PlayerController {
   root: TransformNode;
   harvest(): void;
   isHarvesting(): boolean;
+  getRightHand(): Awaited<ReturnType<typeof loadSurvivor>>["rightHand"];
 }
 
 export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: readonly Footprint[]): PlayerController {
