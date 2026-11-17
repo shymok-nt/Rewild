@@ -15,6 +15,7 @@ import type { ForestTree } from "./installOakForest";
 import { installRockModels } from "./installRockModels";
 import { equipAxe } from "../player/equipAxe";
 import { createGrassPrototype } from "./createGrassPrototype";
+import { installFernForest } from "./installFernForest";
 import { createDebugTools } from "../debug/createDebugTools";
 
 export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
@@ -68,6 +69,7 @@ export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
   const ground = scene.getMeshByName("walkable-meadow");
   if (ground) ground.receiveShadows = true;
   createGrassPrototype(scene);
+  void installFernForest(scene);
   const player = createPlayer(scene, camera, obstacles);
   const harvestNodes = createGatheringSystem(scene, player, obstacles, forestTrees);
   // Keep the shadow map inexpensive: only the nearby player and cabin,
