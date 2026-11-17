@@ -3,6 +3,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import "./style.css";
 import { createCity } from "./city";
 import { HazardSystem } from "./hazards";
+import { createStreetDetails } from "./street";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("App container not found");
@@ -47,6 +48,7 @@ for(let i=0;i<46;i++)for(const lane of [-1,1]){
   const m=plane(0.10,2.4,lane*1.65,0.035,-i*5+9,lineMaterial);stripes.push(m);
 }
 const updateCity = createCity(scene);
+const updateStreet = createStreetDetails(scene);
 const playerRoot=new THREE.Group();scene.add(playerRoot);
 const loader=new GLTFLoader();
 let mixer:THREE.AnimationMixer|null=null;
@@ -102,6 +104,7 @@ function frame(){
   const speed=Math.min(24,13+distance/450);
   distance+=dt*speed;
   updateCity(distance);
+  updateStreet(distance);
   mixer?.update(dt);
   laneVisual=THREE.MathUtils.damp(laneVisual,lane*laneWidth,13,dt);
   if(jumpActive){jumpElapsed=Math.min(jumpDuration,jumpElapsed+dt);jump=jumpDuration-jumpElapsed;if(jumpElapsed>=jumpDuration){jumpActive=false;jump=0;}}
