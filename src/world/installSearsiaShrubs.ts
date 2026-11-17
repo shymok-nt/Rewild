@@ -1,3 +1,4 @@
+import { validImportedMeshes } from "./validateImportedMeshes";
 import "@babylonjs/loaders/glTF";
 import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
@@ -21,7 +22,7 @@ export async function installSearsiaShrubs(scene: Scene, trees: readonly ForestT
   try {
     const result = await SceneLoader.ImportMeshAsync("", "/models/searsia_lucida/", "searsia_lucida_1k.gltf", scene);
     if (scene.isDisposed) return;
-    const meshes = result.meshes.filter((mesh): mesh is Mesh => mesh instanceof Mesh && mesh.getTotalVertices() > 0);
+    const meshes = validImportedMeshes(result.meshes, "Searsia");
     if (!meshes.length) throw new Error("Searsia glTF has no geometry");
     const parts = meshes.map(mesh => {
       mesh.computeWorldMatrix(true);
