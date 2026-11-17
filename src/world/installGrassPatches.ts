@@ -2,16 +2,12 @@ import "@babylonjs/loaders/glTF";
 import "@babylonjs/core/Meshes/thinInstanceMesh";
 import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
-import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
-import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
-import { Color3 } from "@babylonjs/core/Maths/math.color";
 import { Matrix, Quaternion, Vector3 } from "@babylonjs/core/Maths/math.vector";
 import type { Scene } from "@babylonjs/core/scene";
 import type { ForestTree } from "./installOakForest";
 
-type Patch = { x: number; z: number; matrix: Matrix; medium: Matrix };
-/** Dense world coverage: GLB near player, cheap 9-triangle LOD farther away,
- * and existing meadow material at the horizon. Geometry is never duplicated. */
+type Patch = { x: number; z: number; matrix: Matrix };
+/** Detailed GLB near player; continuous textured meadow covers the remaining terrain. */
 export async function installGrassPatches(scene: Scene, forest: readonly ForestTree[]): Promise<void> {
   const result = await SceneLoader.ImportMeshAsync("", "/models/", "grass.glb", scene);
   if (scene.isDisposed) return;
@@ -35,16 +31,6 @@ export async function installGrassPatches(scene: Scene, forest: readonly ForestT
   });
   const width = Math.max(max.x - min.x, max.z - min.z, 0.001);
   const baseScale = Math.min(4, Math.max(0.015, 2.1 / width));
-  const medium = MeshBuilder.CreatePlane("grass-short-lod", { width: 0.5, height: 0.24, sideOrientation: Mesh.DOUBLESIDE }, scene);
-  medium.position.y = 0.12;
-  medium.bakeCurrentTransformIntoVertices();
-  const mediumMaterial = new StandardMaterial("grass-short-lod-material", scene);
-  mediumMaterial.diffuseColor = new Color3(0.39, 0.54, 0.32);
-  mediumMaterial.specularColor = Color3.Black();
-  mediumMaterial.backFaceCulling = false;
-  medium.material = mediumMaterial;
-  medium.isPickable = false;
-  medium.alwaysSelectAsActiveMesh = true;
   const offset = Matrix.Translation(-(min.x + max.x) / 2, -min.y, -(min.z + max.z) / 2);
 
   let seed = 745123;
@@ -69,7 +55,6 @@ export async function installGrassPatches(scene: Scene, forest: readonly ForestT
       patches.push({
         x, z,
         matrix: offset.multiply(Matrix.Compose(new Vector3(scale, scale, scale), rotation, position)),
-        medium: Matrix.Compose(new Vector3(1, 1, 1), rotation, position),
       });
     }
   }
@@ -86,8 +71,6 @@ export async function installGrassPatches(scene: Scene, forest: readonly ForestT
 
   // Hard geometry budget: keep detailed GLB triangles under control.
   const maxNear = Math.min(240, Math.max(24, Math.floor(650000 / Math.max(vertices, 1))));
-  const maxMedium = 1000;
-  let mediumLimit = maxMedium;
   let nearLimit = maxNear;
   let averageFps = 60;
   let lastX = Infinity;
@@ -110,11 +93,6 @@ export async function installGrassPatches(scene: Scene, forest: readonly ForestT
     // Near radius scales with the budget so detailed patches do not become sparse.
     const nearRadius = Math.min(13, Math.max(4.5, Math.sqrt(nearLimit / Math.PI) * spacing * 0.9));
     const near = nearby.filter(item => item.distance < nearRadius ** 2).slice(0, nearLimit);
-    const nearSet = new Set(near.map(item => item.patch));
-    const distant = nearby.filter(item => !nearSet.has(item.patch) && item.distance >= nearRadius ** 2).slice(0, mediumLimit);
-    const mediumMatrices = new Float32Array(distant.length * 16);
-    distant.forEach((item, i) => item.patch.medium.copyToArray(mediumMatrices, i * 16));
-    medium.thinInstanceSetBuffer("matrix", mediumMatrices, 16, true);
     for (const part of parts) {
       const matrices = new Float32Array(near.length * 16);
       near.forEach((item, i) => part.world.multiply(item.patch.matrix).copyToArray(matrices, i * 16));
@@ -133,11 +111,9 @@ export async function installGrassPatches(scene: Scene, forest: readonly ForestT
       adjustment = 0;
       if (averageFps < 43) {
         nearLimit = Math.max(16, Math.floor(nearLimit * 0.8));
-        mediumLimit = Math.max(200, Math.floor(mediumLimit * 0.85));
         dirty = true;
       } else if (averageFps > 57) {
         nearLimit = Math.min(maxNear, Math.ceil(nearLimit * 1.08));
-        mediumLimit = Math.min(maxMedium, Math.ceil(mediumLimit * 1.08));
         dirty = true;
       }
     }
