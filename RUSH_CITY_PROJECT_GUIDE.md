@@ -206,3 +206,66 @@ Paste this short request, or point the new conversation to this file in the repo
 - Keep the GitHub branch and setup commands accurate.
 - Never delete or rewrite this guide without providing an equivalent continuity document.
 - Do not store credentials, tokens or private user information in the repo.
+
+
+---
+
+## 12. Türkçe proje özeti — yeni sohbete geçerken
+
+### Proje tam olarak nedir?
+
+**RUSH CITY**, tarayıcıda çalışan, üç şeritli, üçüncü şahıs kameralı bir **3D sonsuz koşu oyunudur**. Kullanıcı, görsel kalite olarak Subway Surfers seviyesine yaklaşan, fakat kendi özgün karakterleri ve şehir tasarımına sahip bir oyun istiyor. Bu hedef, mevcut sürümün ulaştığı kaliteyle **karıştırılmamalıdır**: şu an çalışan bir temel geliştiriliyor; son ürün hazır değil.
+
+### Kullanıcının çalışma tercihleri
+
+- Kodları ve özellikleri **GitHub deposunda doğrudan geliştir**.
+- Varsayılan dal **main**. Kullanıcı rutin işlemler için önceden izin verdi.
+- Sadece fikir veya prompt verme; gerçek kod yaz, dosyaları güncelle, commit oluştur.
+- Kullanıcı gereksiz sorular ve ara durum mesajları istemiyor.
+- Bir şeyin tamamlandığını söylemeden önce test et; test edemediysen açıkça belirt.
+- Görsel kaliteyi artırırken FPS'yi koru. Hedef donanım güçlü bir ekran kartı değil, entegre AMD Radeon.
+- Önceki Rewild adlı hayatta kalma oyununun kodlarını geri getirme; depo artık RUSH CITY için kullanılıyor.
+- Kullanıcı bir sohbetten diğerine geçerse **önce bu MD dosyasını oku**, sonra mevcut kodları incele.
+- Her önemli geliştirme sonunda bu dosyayı güncelle ve değişiklikleri main'e kaydet.
+
+### Şu anda neler var?
+
+1. Three.js, Vite ve TypeScript altyapısı.
+2. Üç şerit, şerit değiştirme, zıplama ve kayma.
+3. Engeller, altın toplama, çarpışma, puan ve rekor.
+4. Başlatma, duraklatma, yeniden başlatma ve mobil dokunmatik kontroller.
+5. Üretilmiş şehir blokları, mağaza tabelaları, yol çizgileri, kaldırımlar, ağaçlar ve sokak eşyaları.
+6. Gökyüzü, bulutlar, ışık, sis ve karakter gölgesi.
+7. Ses efektleri, ses açma/kapatma ve altın toplama parçacıkları.
+8. Nesne havuzu, instancing ve uyarlanabilir çözünürlük gibi performans çalışmaları.
+9. Oynanış matematiği için otomatik testler ve GitHub Actions iş akışı.
+10. **Geçici robot karakter**; nihai insan karakter henüz eklenmedi.
+
+### Önemli açık işler
+
+- Karakteri gerçek anlamda stilize, kaliteli, rig'li bir **insan koşucu** ile değiştirmek.
+- Koşma/zıplama/kayma animasyonlarının gerçekten uygun şekilde çalıştığını doğrulamak.
+- Şehir ve araç modellerini prototip görünümünden çıkarıp profesyonel sanat yönetimine yaklaştırmak.
+- **Gerçek** TypeScript derleme, test, tarayıcı ve hedef cihaz FPS sonuçlarını toplamak.
+- Engellerin çarpışma sınırlarını ve oynanış adaletini gerçek koşularda denemek.
+- Kaynak dosyalarını, lisansları ve dağıtım şartlarını belgelemek.
+- Oyunun tamamlandığını ilan etmeden önce son kalite kontrolü yapmak.
+
+### Güncel teknik not
+
+2026-11-18 itibarıyla başlangıç butonu karakter GLB yüklenene kadar devre dışı bırakılacak şekilde düzenlendi. Bu, yüklenmemiş karakterle oyuna girilmesini engeller. Bu değişiklik de henüz tam bir tarayıcı testinden geçirilmiş değildir.
+
+### Yeni sohbette doğrudan kullanılabilecek komut
+
+> GitHub'daki `shymok-nt/Rewild` projem olan RUSH CITY'yi geliştirmeye devam et. `main` dalındaki `RUSH_CITY_PROJECT_GUIDE.md` dosyasını ve mevcut kodları önce incele. Proje bitmedi; öncelik gerçek derleme/test doğrulaması, kaliteli 3D insan karakter, animasyonlar ve premium şehir görselleri. Rutin değişiklikler için onayımı zaten verdim; doğrudan kodla ve main'e commit yap. Proje rehberini güncel tut. Tamamlanmayan şeyleri tamamlandı diye söyleme.
+
+### Geliştirme günlükleri için kayıt biçimi
+
+Her önemli geliştirme sonrasında bu bölümün altına tarih, değişen dosyalar, ilgili commit, çalıştırılan testlerin gerçek sonucu, kalan sorunlar ve bir sonraki öncelik eklenmelidir. Özellikle başarısız denemeleri saklama; yeni sohbetin aynı hataları tekrarlamaması için burada belirt.
+
+#### 2026-11-18 — Dokümantasyon ve başlangıç güvenliği
+
+- `RUSH_CITY_PROJECT_GUIDE.md` oluşturuldu; mimari, oyun tasarımı, kullanıcı tercihleri, teknik riskler ve yeni sohbet aktarım bilgileri yazıldı.
+- `src/main.ts` karakter GLB dosyası yüklenmeden oyunun başlatılmasını engelleyecek şekilde düzenlendi.
+- `src/style.css` yüklenme durumundaki butonu ayırt edecek şekilde güncellendi.
+- **Test durumu:** Tam proje derlemesi ve gerçek tarayıcı testi henüz doğrulanmadı.
