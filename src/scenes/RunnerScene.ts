@@ -13,6 +13,13 @@ function clamp01(t: number): number { return Math.max(0, Math.min(1, t)); }
 
 export class RunnerScene extends Phaser.Scene {
   private art!: Phaser.GameObjects.Graphics;
+  private stage!: Phaser.GameObjects.Container;
+  private obstacles: { lane: number; z: number; kind: number; collected: boolean }[] = [];
+  private nextSpawn = 28;
+  private coins = 0;
+  private best = 0;
+  private gameOver = false;
+  private overlay!: Phaser.GameObjects.Text;
   private hud!: Phaser.GameObjects.Text;
   private title!: Phaser.GameObjects.Text;
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
@@ -27,6 +34,7 @@ export class RunnerScene extends Phaser.Scene {
   constructor() { super("RunnerScene"); }
 
   create(): void {
+    this.stage = this.add.container(0, 0);
     this.art = this.add.graphics();
     this.title = this.add.text(26, 20, "RUSH CITY", {
       fontFamily: "Arial, sans-serif", fontSize: "31px", fontStyle: "bold",
@@ -41,10 +49,17 @@ export class RunnerScene extends Phaser.Scene {
       stroke: "#25395e", strokeThickness: 4,
     }).setOrigin(0.5).setDepth(10);
 
+    this.overlay = this.add.text(W / 2, H / 2, "", { fontFamily: "Arial", fontSize: "28px", color: "#ffffff", align: "center", stroke: "#182b49", strokeThickness: 7 }).setOrigin(0.5).setDepth(30).setVisible(false);
+    this.stage.add(this.children.list.filter(child => child !== this.stage));
+    const resize = (size: Phaser.Structs.Size) => this.stage.setScale(size.width / W, size.height / H);
+    this.scale.on("resize", resize);
+    resize(this.scale.gameSize);
+    try { this.best = Number(localStorage.getItem("rush-city-best") || 0); } catch {}
     const kb = this.input.keyboard;
     if (!kb) throw new Error("Keyboard input unavailable");
     this.keys = kb.addKeys("A,D,LEFT,RIGHT,SPACE,UP,DOWN,S,R") as Record<string, Phaser.Input.Keyboard.Key>;
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
+      if (this.gameOver) { this.reset(); return; }
       this.pointerStart = { x: p.x, y: p.y };
     });
     this.input.on("pointerup", (p: Phaser.Input.Pointer) => {
@@ -62,21 +77,46 @@ export class RunnerScene extends Phaser.Scene {
   private jump(): void { if (this.jumpTime <= 0 && this.slideTime <= 0) this.jumpTime = 0.78; }
   private slide(): void { if (this.slideTime <= 0 && this.jumpTime <= 0) this.slideTime = 0.7; }
   private hit(key: string): boolean { return Phaser.Input.Keyboard.JustDown(this.keys[key]); }
+  private reset(): void {
+    this.gameOver = false; this.overlay.setVisible(false); this.distance = 0;
+    this.coins = 0; this.nextSpawn = 28; this.obstacles = []; this.lane = 0;
+    this.visualLane = 0; this.jumpTime = 0; this.slideTime = 0;
+  }
+  private lose(): void {
+    this.gameOver = true;
+    this.best = Math.max(this.best, Math.floor(this.distance));
+    try { localStorage.setItem("rush-city-best", String(this.best)); } catch {}
+    this.overlay.setText("KOŞU BİTTİ!\\n" + Math.floor(this.distance) + " METRE  •  " + this.coins + " ALTIN\\nREKOR: " + this.best + " m\\nR / DOKUN: TEKRAR").setVisible(true);
+  }
 
   update(_time: number, delta: number): void {
     const dt = Math.min(delta / 1000, 0.05);
+    if (this.gameOver) { if (this.hit("R") || this.hit("SPACE")) this.reset(); return; }
     if (this.hit("LEFT") || this.hit("A")) this.move(-1);
     if (this.hit("RIGHT") || this.hit("D")) this.move(1);
     if (this.hit("SPACE") || this.hit("UP")) this.jump();
     if (this.hit("DOWN") || this.hit("S")) this.slide();
-    if (this.hit("R")) { this.lane = 0; this.distance = 0; }
+    if (this.hit("R")) this.reset();
     this.visualLane = Phaser.Math.Linear(this.visualLane, this.lane, 1 - Math.exp(-dt * 14));
     this.jumpTime = Math.max(0, this.jumpTime - dt);
     this.slideTime = Math.max(0, this.slideTime - dt);
-    this.distance += dt * 20;
+    this.distance += dt * Math.min(30, 20 + this.distance / 500);
+    if (this.distance > this.nextSpawn) {
+      this.obstacles.push({ lane: Phaser.Math.Between(-1, 1), z: this.distance + 65, kind: Phaser.Math.Between(0, 3), collected: false });
+      this.nextSpawn = this.distance + Phaser.Math.Between(17, 24);
+    }
+    for (const o of this.obstacles) {
+      const d = o.z - this.distance;
+      if (!o.collected && d < 3 && d > -3 && o.lane === this.lane) {
+        if (o.kind === 3) { this.coins++; o.collected = true; }
+        else if ((o.kind === 0 && this.jumpTime > 0.18) || (o.kind === 1 && this.slideTime > 0.12)) o.collected = true;
+        else { this.lose(); break; }
+      }
+    }
+    this.obstacles = this.obstacles.filter(o => o.z > this.distance - 6);
     this.runClock += dt * 12;
     this.draw();
-    this.hud.setText(`MESAFE  ${Math.floor(this.distance)} m    •    ${Math.round(this.game.loop.actualFps)} FPS`);
+    this.hud.setText(`MESAFE ${Math.floor(this.distance)} m   •   ALTIN ${this.coins}   •   REKOR ${this.best} m   •   ${Math.round(this.game.loop.actualFps)} FPS`);
   }
 
   private roadY(t: number): number { return lerp(HORIZON, BOTTOM, t * t); }
@@ -144,6 +184,26 @@ export class RunnerScene extends Phaser.Scene {
         const x2 = W / 2 + divider * this.roadHalf(t2) / 3;
         const width = 1 + t * 5;
         this.poly([x1-width,this.roadY(t),x1+width,this.roadY(t),x2+width,this.roadY(t2),x2-width,this.roadY(t2)],0xf4e8ce,0.9);
+      }
+    }
+    for (const o of this.obstacles) {
+      if (o.collected) continue;
+      const t = Math.max(0, Math.min(1, 1 - (o.z - this.distance) / 65));
+      if (t <= 0 || t >= 1) continue;
+      const x = this.roadX(o.lane, t), y = this.roadY(t), size = 8 + t * 70;
+      if (o.kind === 3) {
+        g.fillStyle(0xffd34d); g.fillCircle(x, y - size * 0.6, size * 0.3);
+        g.lineStyle(Math.max(1, t * 4), 0xfff0ac); g.strokeCircle(x, y - size * 0.6, size * 0.3);
+      } else if (o.kind === 0) {
+        g.fillStyle(0xff884f); g.fillRoundedRect(x - size * 0.6, y - size * 0.7, size * 1.2, size * 0.65, 4);
+        g.fillStyle(0xffdf9b); g.fillRect(x - size * 0.45, y - size * 0.5, size * 0.9, size * 0.14);
+      } else if (o.kind === 1) {
+        g.fillStyle(0x40587b); g.fillRect(x - size * 0.65, y - size * 1.6, size * 0.13, size * 1.6);
+        g.fillRect(x + size * 0.52, y - size * 1.6, size * 0.13, size * 1.6);
+        g.fillStyle(0xffbb63); g.fillRoundedRect(x - size * 0.75, y - size * 1.6, size * 1.5, size * 0.4, 3);
+      } else {
+        g.fillStyle(0x47648b); g.fillRoundedRect(x - size * 0.6, y - size * 1.5, size * 1.2, size * 1.5, 5);
+        g.fillStyle(0x9dc4df); g.fillRect(x - size * 0.4, y - size * 1.3, size * 0.8, size * 0.3);
       }
     }
     this.drawPlayer();
