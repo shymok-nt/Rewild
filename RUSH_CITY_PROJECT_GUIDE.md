@@ -143,7 +143,7 @@ Performance-conscious measures already present:
 - Procedural city still contains numerous individual meshes, and each may incur a draw call. Profile with renderer.info.render.calls.
 - Some materials and geometries are created per obstacle variant rather than globally; pooling mitigates but does not eliminate initial spikes.
 - Fixed geometry detail and shadow casting need profiling on integrated Radeon GPUs.
-- Shadow maps disabled due to low FPS currently do not automatically re-enable.
+- Shadow maps are disabled below 29 FPS and re-enabled only after at least 12 seconds of measured >=54 FPS; verify hysteresis on target GPU.
 - Textures and sky clouds should be verified visually on both desktop and mobile.
 - Consider limiting CPU overhead and avoiding excess garbage collection.
 - Avoid claiming stable FPS without actual browser benchmarks.
@@ -279,3 +279,11 @@ Her önemli geliştirme sonrasında bu bölümün altına tarih, değişen dosya
 - **Gerçek yerel doğrulama:** `npm run test` 6/6 başarılı; `npm run typecheck` başarılı; `npm run build` başarılı (Vite 7.3.8, büyük JS paketi uyarısı var).
 - **Henüz doğrulanmadı:** tarayıcı oynanışı, animasyonların görünümü, çarpışma hissi, mobil kontrol ve hedef AMD bilgisayarda FPS.
 - **Sonraki öncelik:** tarayıcı smoke test, hitbox ayarı, gerçek insan karakteri ve lisanslı/özgün çevre görselleri.
+
+
+#### 2026-11-18 — Adaptive shadow recovery
+
+- Updated `src/main.ts` directly on `main` (commit `3d89efdc`). Shadow rendering can now recover after 12 seconds at >=54 measured FPS; below 29 FPS it switches off. Recovery requires sustained performance to reduce rapid toggling on integrated GPUs.
+- This is a rendering stability improvement, **not** a completed human character or city-asset upgrade. No new third-party models were downloaded or installed in this change.
+- **Validation pending:** No local build, browser playtest, or AMD GPU benchmark was run for this specific commit. Run `npm run test`, `npm run typecheck`, `npm run build` and test the shadow transitions in browser.
+- Next: source and verify commercial-use rights for a stylized human runner and animation clips, then integrate and test; improve city art without sacrificing FPS.
