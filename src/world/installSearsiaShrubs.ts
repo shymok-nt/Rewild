@@ -3,6 +3,8 @@ import "@babylonjs/loaders/glTF";
 import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Quaternion, Vector3 } from "@babylonjs/core/Maths/math.vector";
+import { SimplificationType } from "@babylonjs/core/Meshes/meshSimplification";
+import "@babylonjs/core/Meshes/meshSimplification";
 import type { Scene } from "@babylonjs/core/scene";
 import type { ForestTree } from "./installOakForest";
 
@@ -45,6 +47,22 @@ export async function installSearsiaShrubs(scene: Scene, trees: readonly ForestT
       mesh.getWorldMatrix().decompose(scale, rotation, position);
       return { mesh, scale, rotation, position };
     });
+    // Generate lower-triangle LODs from the actual imported plant meshes.
+    // Babylon uses these only beyond the given camera distance, keeping
+    // the same leaf materials and recognizable silhouette.
+    for (const part of parts) {
+      if (part.mesh.getTotalVertices() < 400) continue;
+      try {
+        part.mesh.simplify(
+          [{ quality: 0.55, distance: 20, optimizeMesh: true }],
+          true,
+          SimplificationType.QUADRATIC,
+          () => console.info("[Rewild] Searsia LOD ready:", part.mesh.name),
+        );
+      } catch (error) {
+        console.warn("[Rewild] Searsia LOD skipped:", part.mesh.name, error);
+      }
+    }
     const colonies: { anchor: TransformNode; x: number; z: number; baseScale: number; fade: number }[] = [];
     let count = 0;
     const MAX_SHRUBS = 24;
@@ -85,12 +103,11 @@ export async function installSearsiaShrubs(scene: Scene, trees: readonly ForestT
       }
     }
     for (const part of parts) part.mesh.isVisible = false;
-    // Soft distance transition: keep the original shrub geometry and materials.
-    // No sphere impostors or transparent leaf layers (which increase overdraw).
-    // Ease the whole colony out over a wide distance band, then disable it.
-    const FADE_START = 32;
-    const FADE_END = 49;
-    const MIN_SCALE = 0.001;
+    // Preserve real-world scale. Shrinking plants looked unnatural.
+    // Use distance-based visibility on the existing instanced meshes,
+    // easing in/out over a wide range instead of sudden pop-in.
+    const FADE_START = 38;
+    const FADE_END = 62;
     const smoothstep = (value: number) => {
       const t = Math.max(0, Math.min(1, value));
       return t * t * (3 - 2 * t);
@@ -99,10 +116,7 @@ export async function installSearsiaShrubs(scene: Scene, trees: readonly ForestT
     const observer = scene.onBeforeRenderObservable.add(() => {
       const camera = scene.activeCamera;
       if (!camera) return;
-      const delta = Math.min(scene.getEngine().getDeltaTime(), 100) / 1000;
-      elapsed += delta;
-      // At most 20 updates/sec. Interpolation avoids noticeable popping
-      // when sprinting or turning the camera near the fade boundary.
+      elapsed += Math.min(scene.getEngine().getDeltaTime(), 100) / 1000;
       if (elapsed < 0.05) return;
       const step = Math.min(elapsed, 0.15);
       elapsed = 0;
@@ -110,12 +124,16 @@ export async function installSearsiaShrubs(scene: Scene, trees: readonly ForestT
       for (const colony of colonies) {
         const distance = Math.hypot(colony.x - px, colony.z - pz);
         const target = 1 - smoothstep((distance - FADE_START) / (FADE_END - FADE_START));
-        const blend = 1 - Math.exp(-step * 9);
-        colony.fade += (target - colony.fade) * blend;
+        colony.fade += (target - colony.fade) * (1 - Math.exp(-step * 8));
         if (Math.abs(colony.fade - target) < 0.002) colony.fade = target;
         const visible = colony.fade > 0.005;
         if (colony.anchor.isEnabled() !== visible) colony.anchor.setEnabled(visible);
-        if (visible) colony.anchor.scaling.setAll(colony.baseScale * Math.max(MIN_SCALE, colony.fade));
+        // Mesh visibility controls opacity without modifying the original GLTF
+        // materials or creating replacement spheres. Alpha blending in the
+        // transition zone costs some overdraw, so keep that zone distant.
+        for (const mesh of colony.anchor.getChildMeshes(false)) {
+          mesh.visibility = colony.fade;
+        }
       }
     });
     scene.onDisposeObservable.addOnce(() => scene.onBeforeRenderObservable.remove(observer));
