@@ -1,1 +1,21 @@
-*{box-sizing:border-box}html,body,#app{margin:0;width:100%;height:100%;overflow:hidden}body{background:#8ac6ed;color:white;font-family:Inter,system-ui,Arial,sans-serif}#app{position:fixed;inset:0;width:100vw;height:100dvh}canvas{display:block;width:100%;height:100%;touch-action:none}#hud{position:absolute;z-index:2;top:20px;left:24px;right:24px;display:flex;align-items:center;gap:26px;font-size:18px;text-shadow:0 2px 8px #142b50}#hud strong{font-size:28px;letter-spacing:2px;margin-right:auto}#instructions{position:absolute;z-index:2;bottom:22px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:13px;font-weight:700;text-shadow:0 2px 8px #142b50}#status{position:absolute;z-index:3;top:45%;left:50%;transform:translate(-50%,-50%);background:#16253eea;border:1px solid #ffffff44;border-radius:18px;padding:22px 32px;text-align:center;max-width:85vw;font-weight:700;line-height:1.6}#status[hidden]{display:none}
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=DM+Sans:wght@500;600;700;800&display=swap');
+:root{font-family:'DM Sans',system-ui,sans-serif;color:#fff;font-synthesis:none}
+*{box-sizing:border-box}
+html,body,#app{margin:0;width:100%;height:100%;overflow:hidden}
+body{background:#83bee6}
+#app{position:fixed;inset:0;width:100vw;height:100dvh;isolation:isolate}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+#hud{pointer-events:none;position:absolute;z-index:2;top:max(20px,env(safe-area-inset-top));left:clamp(16px,3vw,44px);right:clamp(60px,5vw,100px);display:flex;align-items:center;gap:clamp(10px,2vw,28px);font-size:clamp(14px,1.7vw,21px);font-weight:800;text-shadow:0 3px 12px #1c355d88}
+#hud strong{font-family:'Barlow Condensed',Impact,sans-serif;font-size:clamp(27px,4vw,48px);font-weight:900;letter-spacing:1.5px;line-height:1;color:#fff;text-shadow:0 4px 0 #ef7650,0 7px 14px #24395577;white-space:nowrap;margin-right:auto}
+#score,#coins{background:#15294388;border:1px solid #ffffff6b;box-shadow:0 6px 22px #0c23351c,inset 0 1px 0 #ffffff44;border-radius:15px;padding:10px 16px;backdrop-filter:blur(10px);white-space:nowrap}
+#coins{color:#ffe58b}
+#instructions{pointer-events:none;position:absolute;z-index:2;bottom:max(20px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);white-space:nowrap;font-size:12px;font-weight:800;letter-spacing:.06em;text-shadow:0 2px 10px #142b50}
+#status{position:absolute;z-index:4;top:45%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(150deg,#1a3456f2,#172641f5);border:1px solid #ffffff70;box-shadow:0 24px 90px #10243b7d;border-radius:25px;padding:30px 38px;text-align:center;max-width:min(90vw,540px);font-family:'Barlow Condensed',sans-serif;font-size:clamp(23px,3vw,37px);font-weight:900;line-height:1.4;letter-spacing:.02em}
+#status[hidden]{display:none}
+#pause-button{position:absolute;z-index:3;top:max(20px,env(safe-area-inset-top));right:clamp(16px,3vw,44px);border:1px solid #ffffff80;background:#152943aa;color:#fff;border-radius:14px;width:47px;height:47px;font-size:23px;font-weight:800;cursor:pointer;backdrop-filter:blur(8px)}
+#mobile-controls{display:none;position:absolute;z-index:3;bottom:max(25px,env(safe-area-inset-bottom));left:14px;right:14px;justify-content:space-between;gap:8px;pointer-events:none}
+#mobile-controls button{pointer-events:auto;border:1px solid #ffffff99;background:#142e4fa8;color:white;border-radius:18px;min-width:58px;height:62px;flex:1;max-width:90px;font-size:26px;font-weight:900;box-shadow:0 5px 20px #162d4266;backdrop-filter:blur(10px);touch-action:none}
+button:focus-visible{outline:3px solid #ffe38b;outline-offset:3px}
+@media(pointer:coarse){#mobile-controls{display:flex}#instructions{display:none}}
+@media(max-width:640px){#hud{top:max(12px,env(safe-area-inset-top));left:12px;right:62px;gap:7px;flex-wrap:wrap}#hud strong{width:100%;margin:0;font-size:31px}#score,#coins{padding:7px 10px;font-size:13px;border-radius:10px}#pause-button{top:max(12px,env(safe-area-inset-top));right:12px;width:40px;height:40px}#status{padding:22px 20px}}
+@media(prefers-reduced-motion:reduce){#hud,#status{backdrop-filter:none}}
