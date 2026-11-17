@@ -1,22 +1,24 @@
-# Rewild
+# RUSH CITY
 
-Stylized 3D restoration survival game prototype, powered by Babylon.js, TypeScript and Vite.
+A lightweight 2.5D endless-runner prototype made with Phaser 3, TypeScript and Vite.
 
-## Quick start
-
-Requires Node.js 20.19+ or 22.12+.
+## Run
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open the local URL printed by Vite. Run `npm run build` to type-check and bundle.
+## Controls
 
-Phase 2 adds a simple capsule-based third-person character with camera-relative WASD/arrow-key movement, Shift sprint, Space jump, mouse-orbit camera and zoom. This is a prototype controller: no character animations, physics-engine collisions with buildings, inventory or construction yet.
+- A/D or Left/Right: change lane
+- Space / Up: jump
+- Down / S: slide
+- R: restart
+- On touch screens: swipe left/right/up/down
 
-## Phase 3 environment
+## Phase 1
 
-The initial primitive environment has been replaced with a deterministic woodland scene: tiered pines (thin instancing), meadow patches, a winding footpath, wildflowers, rocks, a weathered cottage and distant ruins. The playable ground remains flat at y=0 to preserve the Phase 2 controller. Terrain height variation, collision with buildings, lighting polish and detailed art assets are future work.
+Three lanes, procedural perspective road, animated player, skyline and roadside buildings, keyboard/touch controls, responsive viewport, FPS display and a lightweight render loop. No imported 3D assets, physics engine, or large textures.
 
-Run `npm run build` to validate TypeScript and Vite before playing. Visuals are procedural prototypes, not final production art.
+Phase 2 will add obstacles, collisions, pickups and score. This prototype intentionally has no fail state yet.
