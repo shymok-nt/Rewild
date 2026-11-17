@@ -2,6 +2,7 @@ import "@babylonjs/loaders/glTF";
 import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
+import { InstancedMesh } from "@babylonjs/core/Meshes/instancedMesh";
 import type { Scene } from "@babylonjs/core/scene";
 import type { HarvestNode } from "../game/harvesting";
 
@@ -51,7 +52,9 @@ export async function installRockModels(scene: Scene, nodes: readonly HarvestNod
   );
   // The source rock is about 8 world units wide; scale to original boulder size.
   for (const original of originals) {
-    if (!(original instanceof Mesh)) continue;
+    // Procedural boulders are InstancedMesh, not Mesh. The old Mesh-only
+    // check silently skipped all 45 boulders and left their flat placeholders.
+    if (!(original instanceof InstancedMesh || original instanceof Mesh)) continue;
     const placement = new TransformNode("rock-placement-" + original.name, scene);
     const anchor = create("glb-" + original.name, placement, 0.18);
     placement.position.copyFrom(original.position);
@@ -79,5 +82,5 @@ export async function installRockModels(scene: Scene, nodes: readonly HarvestNod
     node.label = "Taş";
   }
   for (const part of parts) part.mesh.isVisible = false;
-  console.info("[Rewild] Rock GLB installed:", originals.length, "boulders");
+  console.info("[Rewild] Rock GLB installed:", originals.length, "boulders replaced");
 }
