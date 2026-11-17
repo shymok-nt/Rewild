@@ -93,7 +93,6 @@ export class HazardSystem {
   private readonly active: Hazard[] = [];
   private readonly pool = new Map<HazardKind, Hazard[]>();
   private nextSpawn = 25;
-  private readonly events: {distance:number;lane:number;kind:HazardKind}[] = [];
   private readonly spawnZ = -92;
   private readonly laneWidth = 2.9;
   constructor(private readonly scene: THREE.Scene) {}
@@ -120,7 +119,6 @@ export class HazardSystem {
   reset(): void {
     for (let i = this.active.length - 1; i >= 0; i--) this.release(i);
     this.nextSpawn = 25;
-    this.events.length = 0;
   }
   update(dt: number, distance: number, speed: number, playerLane: number, jumpHeight: number, sliding: boolean):
     { coins: number; crashed: boolean } {
