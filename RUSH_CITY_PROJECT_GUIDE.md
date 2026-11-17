@@ -315,3 +315,9 @@ Her önemli geliştirme sonrasında bu bölümün altına tarih, değişen dosya
 - Assets were fetched as actual binary GLB files via GitHub and committed into the repository; no runtime third-party download dependency.
 - Validation: CI compile pending; check model orientation, road-to-sidewalk scale, character facing direction, source animation appearance and visual seams in browser. AMD FPS not yet measured.
 - Sources: https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/CesiumMan and https://github.com/kayquer/kit-cidade-lowpoly
+
+
+#### 2026-11-18 — Maya character handoff
+- User supplied `run-maya-3d-person-animated.glb` (20 MB, CC0 Innerscene), containing a skin and `Run` animation. `src/main.ts` now loads `/assets/run-maya-3d-person-animated.glb` and selects the `Run` clip. This replaces CesiumMan as the active character.
+- IMPORTANT: the large binary was **not committed** to GitHub. The user must extract the delivered `rush-city-maya-model.zip` into the repository root so `public/assets/run-maya-3d-person-animated.glb` exists. A fresh clone without this file will show a loading error.
+- Character facing, scale and ground contact have not yet been browser-validated; jump/slide are still transform adjustments on the running clip, not dedicated animations.
