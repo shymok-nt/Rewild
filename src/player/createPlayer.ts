@@ -25,13 +25,33 @@ export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: r
   }).catch(error => {
     console.warn("Survivor GLB unavailable; using built-in explorer.", error);
   });
-  camera.lockedTarget = root;
+  // Keep zoom focused on the character's torso rather than their feet.
+  const cameraFocus = new TransformNode("player-camera-focus", scene);
+  cameraFocus.parent = root;
+  cameraFocus.position.y = 1.45;
+  camera.lockedTarget = cameraFocus;
   camera.radius = 12;
   camera.lowerRadiusLimit = 5;
   camera.upperRadiusLimit = 22;
   camera.lowerBetaLimit = 0.3;
   camera.upperBetaLimit = 1.45;
   camera.panningSensibility = 0;
+  // Click the canvas once to capture the pointer; Esc releases it.
+  camera.inputs.removeByType("ArcRotateCameraPointersInput");
+  const canvas = scene.getEngine().getRenderingCanvas();
+  const onCanvasClick = () => {
+    if (canvas && document.pointerLockElement !== canvas) {
+      void canvas.requestPointerLock();
+    }
+  };
+  const onMouseMove = (event: MouseEvent) => {
+    if (!canvas || document.pointerLockElement !== canvas) return;
+    camera.alpha -= event.movementX * 0.003;
+    camera.beta -= event.movementY * 0.003;
+    camera.beta = Math.max(camera.lowerBetaLimit ?? 0.3, Math.min(camera.upperBetaLimit ?? 1.45, camera.beta));
+  };
+  canvas?.addEventListener("click", onCanvasClick);
+  document.addEventListener("mousemove", onMouseMove);
 
   const keys = new Set<string>();
   const controlled = new Set(["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space", "ShiftLeft", "ShiftRight"]);
@@ -89,6 +109,9 @@ export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: r
     window.removeEventListener("keydown", onDown);
     window.removeEventListener("keyup", onUp);
     window.removeEventListener("blur", onBlur);
+    canvas?.removeEventListener("click", onCanvasClick);
+    document.removeEventListener("mousemove", onMouseMove);
+    if (canvas && document.pointerLockElement === canvas) document.exitPointerLock();
     model?.dispose();
   });
   return { root, harvest: () => { harvestUntil = performance.now() + 550; }, isHarvesting: () => performance.now() < harvestUntil };
