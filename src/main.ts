@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import "./style.css";
+import { createCity } from "./city";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("App container not found");
@@ -44,6 +45,7 @@ const stripes:THREE.Mesh[]=[];
 for(let i=0;i<46;i++)for(const lane of [-1,1]){
   const m=plane(0.10,2.4,lane*1.65,0.035,-i*5+9,lineMaterial);stripes.push(m);
 }
+const updateCity = createCity(scene);
 const playerRoot=new THREE.Group();scene.add(playerRoot);
 const loader=new GLTFLoader();
 let mixer:THREE.AnimationMixer|null=null;
@@ -104,6 +106,7 @@ function frame(){
  if(!paused&&!dead){
   const speed=Math.min(24,13+distance/450);
   distance+=dt*speed;
+  updateCity(distance);
   mixer?.update(dt);
   laneVisual=THREE.MathUtils.damp(laneVisual,lane*laneWidth,13,dt);
   const jumping=jump>0;
