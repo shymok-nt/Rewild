@@ -42,6 +42,15 @@ export async function installRockModels(scene: Scene, nodes: readonly HarvestNod
     anchor.parent!.rotation.copyFrom(original.rotation);
     anchor.parent!.scaling.copyFrom(original.scaling);
     anchor.position.set(0, -0.15, 0);
+    const resource = nodes.find(node => node.id.startsWith("boulder-") &&
+      Math.abs(node.position.x - original.position.x) < 0.01 &&
+      Math.abs(node.position.z - original.position.z) < 0.01);
+    if (resource) {
+      // Parent the complete placement so depletion and relocation affect the GLB.
+      anchor.parent!.parent = resource.visual;
+      anchor.parent!.position.x = 0;
+      anchor.parent!.position.z = 0;
+    }
     original.dispose();
   }
   for (const node of nodes) {
