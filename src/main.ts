@@ -97,8 +97,10 @@ let avatar:THREE.Object3D|null=null;
 
 // Temporary animated model for the GLB pipeline; replace with art-directed human runner.
 const characterUrl="/assets/character.glb";
+let characterLoadFailed=false;
 loader.load(characterUrl,gltf=>{
   avatar=gltf.scene;
+  characterLoadFailed=false;
   const bounds=new THREE.Box3().setFromObject(avatar);
   const height=Math.max(bounds.max.y-bounds.min.y,0.01);
   avatar.scale.multiplyScalar(2.3/height);
@@ -118,8 +120,12 @@ loader.load(characterUrl,gltf=>{
   playAnimation("run");
   if (!dead && !paused) statusEl.hidden=true;
 },undefined,()=>{
+  characterLoadFailed=true;
+  paused=true;
+  pauseButton.textContent="▶";
+  restartButton.hidden=true;
   statusEl.hidden=false;
-  statusEl.textContent="3D karakter modeli henüz kurulmadı: public/assets/character.glb gerekiyor. Sahne hazır, karakter varlığı bekleniyor.";
+  statusEl.textContent="Karakter yüklenemedi. public/assets/character.glb dosyasını ve tarayıcı konsolunu kontrol edin.";
 });
 const clock=new THREE.Clock();
 let distance=0,coins=0,lane=0,laneVisual=0,slide=0,paused=true,dead=false;
@@ -143,7 +149,7 @@ function action(key:string){
  if(key==="ArrowRight"||key==="d"){const prev=lane;lane=clampLane(lane+1);if(prev!==lane)audio.lane();}
  if((key==="ArrowUp"||key===" "||key==="w")&&!jumpActive&&slide<=0){jumpActive=true;jumpElapsed=0;audio.jump();}
  if((key==="ArrowDown"||key==="s")&&slide<=0&&!jumpActive){slide=0.72;audio.slide();}
- if(key==="p"||key==="Escape"){paused=!paused;pauseButton.textContent=paused?"▶":"Ⅱ";if(!dead){statusEl.hidden=!paused;if(paused)statusEl.textContent="DURAKLATILDI · P İLE DEVAM";else{restartButton.hidden=true;audio.start();}}}
+ if((key==="p"||key==="Escape")&&!characterLoadFailed){paused=!paused;pauseButton.textContent=paused?"▶":"Ⅱ";if(!dead){statusEl.hidden=!paused;if(paused)statusEl.textContent="DURAKLATILDI · P İLE DEVAM";else{restartButton.hidden=true;audio.start();}}}
  if(dead&&(key==="r"||key===" ")){restartButton.hidden=true;restartButton.textContent="YENİDEN OYNA";dead=false;paused=false;pauseButton.textContent="Ⅱ";distance=0;coins=0;lane=0;laneVisual=0;slide=0;jumpActive=false;jumpElapsed=0;hazards.reset();statusEl.hidden=true;audio.start();}
 }
 restartButton.addEventListener("click",()=>{audio.unlock();if(dead)action("r");else if(paused)action("p");});
@@ -170,7 +176,7 @@ function frame(){
   const pixelRatio=renderer.getPixelRatio();
   if(fps<29 && renderer.shadowMap.enabled){renderer.shadowMap.enabled=false;renderer.shadowMap.needsUpdate=true;}
   if(qualityCooldown===0&&fps<38&&pixelRatio>0.85){renderer.setPixelRatio(Math.max(0.85,pixelRatio-0.2));resize();qualityCooldown=8;}
-  else if(qualityCooldown===0&&fps>58&&pixelRatio<Math.min(devicePixelRatio,1.25)){renderer.setPixelRatio(Math.min(Math.min(devicePixelRatio,1.5),pixelRatio+0.1));resize();qualityCooldown=8;}
+  else if(qualityCooldown===0&&fps>58&&pixelRatio<Math.min(devicePixelRatio,1.25)){renderer.setPixelRatio(Math.min(Math.min(devicePixelRatio,1.25),pixelRatio+0.1));resize();qualityCooldown=8;}
   frameCount=0;frameSeconds=0;
  }
  if(!paused&&!dead){
