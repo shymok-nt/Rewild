@@ -19,3 +19,9 @@ button:focus-visible{outline:3px solid #ffe38b;outline-offset:3px}
 @media(pointer:coarse){#mobile-controls{display:flex}#instructions{display:none}}
 @media(max-width:640px){#hud{top:max(12px,env(safe-area-inset-top));left:12px;right:62px;gap:7px;flex-wrap:wrap}#hud strong{width:100%;margin:0;font-size:31px}#score,#coins{padding:7px 10px;font-size:13px;border-radius:10px}#pause-button{top:max(12px,env(safe-area-inset-top));right:12px;width:40px;height:40px}#status{padding:22px 20px}}
 @media(prefers-reduced-motion:reduce){#hud,#status{backdrop-filter:none}}
+
+#sound-button{position:absolute;z-index:3;top:calc(max(20px,env(safe-area-inset-top)) + 55px);right:clamp(16px,3vw,44px);border:1px solid #ffffff80;background:#152943aa;color:#fff;border-radius:14px;width:47px;height:47px;font-size:23px;font-weight:800;cursor:pointer;backdrop-filter:blur(8px)}
+#restart-button{position:absolute;z-index:5;left:50%;top:calc(45% + 95px);transform:translateX(-50%);background:#ffd34f;color:#253347;border:3px solid #fff;border-radius:16px;padding:13px 30px;font-family:'Barlow Condensed',Impact,sans-serif;font-size:23px;font-weight:900;letter-spacing:.04em;box-shadow:0 7px 0 #d38d2d,0 14px 32px #11253e99;cursor:pointer;white-space:nowrap}
+#restart-button[hidden]{display:none}
+#restart-button:active{transform:translate(-50%,3px);box-shadow:0 4px 0 #d38d2d}
+@media(max-width:640px){#sound-button{top:calc(max(12px,env(safe-area-inset-top)) + 47px);right:12px;width:40px;height:40px}#restart-button{top:calc(45% + 90px);font-size:21px}}
