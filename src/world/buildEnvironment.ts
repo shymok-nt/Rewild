@@ -58,19 +58,33 @@ export function buildEnvironment(scene: Scene, forestTrees: ForestTree[] = []): 
   // A single repeating texture provides continuous grass coverage at any distance.
   const texture = new DynamicTexture("meadow-grass-cover", { width: 512, height: 512 }, scene, false);
   const context = texture.getContext();
-  context.fillStyle = "#718e62";
+  // Layered terrain color variation: no extra meshes, no z-fighting.
+  context.fillStyle = "#78956a";
   context.fillRect(0, 0, 512, 512);
   const textureRandom = seeded(91242);
-  for (let i = 0; i < 28000; i++) {
-    const px = Math.floor(textureRandom() * 512);
-    const py = Math.floor(textureRandom() * 512);
-    const shade = Math.floor(textureRandom() * 4);
-    context.fillStyle = ["#648458", "#809d6c", "#668657", "#8da376"][shade];
-    context.fillRect(px, py, 1 + textureRandom() * 2, 2 + textureRandom() * 5);
+  for (let i = 0; i < 1700; i++) {
+    const x = textureRandom() * 512;
+    const y = textureRandom() * 512;
+    const radius = 4 + textureRandom() * 27;
+    context.fillStyle = ["#708b61", "#839d70", "#6b885d", "#8ba577"][Math.floor(textureRandom() * 4)];
+    context.beginPath();
+    context.ellipse(x, y, radius, radius * (0.5 + textureRandom()), textureRandom() * 6.28, 0, Math.PI * 2);
+    context.fill();
+  }
+  // Tiny overlapping strokes read as grass at ground level without billboards.
+  for (let i = 0; i < 36000; i++) {
+    const x = textureRandom() * 512;
+    const y = textureRandom() * 512;
+    context.strokeStyle = ["#58774c", "#9bae80", "#638250", "#b0b68a", "#718b59"][Math.floor(textureRandom() * 5)];
+    context.lineWidth = 0.5 + textureRandom() * 0.8;
+    context.beginPath();
+    context.moveTo(x, y);
+    context.lineTo(x + (textureRandom() - 0.5) * 3, y - 2 - textureRandom() * 5);
+    context.stroke();
   }
   texture.update();
-  texture.uScale = 14;
-  texture.vScale = 14;
+  texture.uScale = 10;
+  texture.vScale = 10;
   meadow.diffuseColor = Color3.White();
   meadow.diffuseTexture = texture;
   ground.material = meadow;
