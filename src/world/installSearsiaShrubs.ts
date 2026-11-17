@@ -46,7 +46,7 @@ export async function installSearsiaShrubs(scene: Scene, trees: readonly ForestT
       return { mesh, scale, rotation, position };
     });
     let count = 0;
-    const MAX_SHRUBS = 95;
+    const MAX_SHRUBS = 24;
     const plant = (x: number, z: number, scale: number, angle: number) => {
       if (clear(x, z) || count >= MAX_SHRUBS) return;
       const anchor = new TransformNode("searsia-shrub-" + count, scene);
@@ -60,6 +60,7 @@ export async function installSearsiaShrubs(scene: Scene, trees: readonly ForestT
         instance.rotationQuaternion = part.rotation.clone();
         instance.scaling.copyFrom(part.scale);
         instance.isPickable = false;
+        instance.receiveShadows = false;
       }
       count++;
     };
