@@ -74,9 +74,10 @@ export async function equipAxe(
       // the palm; avoid offsetting the entire model from its centre.
       const bounds = hand.getBoundingInfo().boundingBox;
       const palm = bounds.minimum.add(bounds.maximum).scale(0.5);
-      const handWidth = Math.abs(bounds.maximum.x - bounds.minimum.x);
-      socket.position.set(palm.x - Math.max(0.035, handWidth * 0.4), palm.y, palm.z + 0.035);
-      socket.rotation.set(0.12, 0, -0.12);
+      // Grip pivot sits in the palm; the shaft crosses the hand rather than
+      // being mounted to the outer side of the forearm.
+      socket.position.set(palm.x, palm.y, palm.z);
+      socket.rotation.set(0.52, 0.06, -0.18);
       console.info("[Rewild] Procedural axe mounted at Hand_R grip");
     }
     if (!attachedHand) {
