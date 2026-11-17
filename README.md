@@ -2,7 +2,7 @@
 
 A browser-based 3D endless runner built with **Three.js, TypeScript and Vite**.
 
-> **Development status:** This is an early playable 3D foundation, **not** a finished Subway Surfers-quality game. The current imported character is a temporary animated GLB and the environment is still being art-directed.
+> **Development status:** This is an early playable 3D foundation, **not** a finished Subway Surfers-quality game. The current character is an original procedural articulated human runner and the environment is still being art-directed.
 
 ## Requirements
 
@@ -58,12 +58,12 @@ The project includes a GitHub Actions test and build workflow. The pure gameplay
 - `src/sky.ts`: gradient sky and generated cloud sprites
 - `src/rules.ts`: pure lane, speed, jump and collision rules
 - `tests/rules.test.mjs`: Node 22 gameplay unit tests
-- `public/assets/character.glb`: temporary animated example asset from the Three.js example library
+- `src/humanRunner.ts`: original stylized articulated human runner and procedural run/jump/slide animations
 
 ## Visual and technical roadmap
 
-The existing character and some scenery are placeholders for the final art direction. Before release the project needs a properly licensed human runner with run/jump/slide animation clips, polished art assets, mobile tuning, sound design, accessibility options, and verified playtesting. Do not market the current scene as a finished commercial game.
+The procedural character and some scenery are early art-direction iterations for the final art direction. Before release the project needs a properly licensed human runner with run/jump/slide animation clips, polished art assets, mobile tuning, sound design, accessibility options, and verified playtesting. Do not market the current scene as a finished commercial game.
 
 ## Credits
 
-Temporary character GLB: `RobotExpressive.glb` from the [Three.js examples](https://github.com/mrdoob/three.js/tree/master/examples/models/gltf/RobotExpressive). Review its original asset licensing and attribution before redistribution.
+The active human runner is original code-generated geometry and animation, with no external model dependencies. The legacy RobotExpressive GLB is unused and should be removed during asset cleanup.
