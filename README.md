@@ -23,12 +23,13 @@ Open the localhost URL shown by Vite.
 ## Build
 
 ```powershell
+npm run test
 npm run typecheck
 npm run build
 npm run preview
 ```
 
-The project includes a GitHub Actions build workflow. A successful workflow run should be verified before distributing the game. The game has not yet been visually validated on the target AMD integrated GPU.
+The project includes a GitHub Actions test and build workflow. The pure gameplay rule tests passed locally under Node 22, but a successful full project build workflow run should be verified before distributing the game. The game has not yet been visually validated on the target AMD integrated GPU.
 
 ## Controls
 
@@ -55,6 +56,8 @@ The project includes a GitHub Actions build workflow. A successful workflow run 
 - `src/audio.ts`: original synthesized audio with mute preference
 - `src/effects.ts`: pooled 3D coin-pickup particles
 - `src/sky.ts`: gradient sky and generated cloud sprites
+- `src/rules.ts`: pure lane, speed, jump and collision rules
+- `tests/rules.test.mjs`: Node 22 gameplay unit tests
 - `public/assets/character.glb`: temporary animated example asset from the Three.js example library
 
 ## Visual and technical roadmap
