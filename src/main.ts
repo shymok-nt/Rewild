@@ -171,6 +171,7 @@ window.addEventListener("resize",resize);resize();
 let frameCount=0;
 let frameSeconds=0;
 let qualityCooldown=0;
+let shadowRecoverySeconds=0;
 function frame(){
  requestAnimationFrame(frame);
  const dt=Math.min(clock.getDelta(),0.05);
@@ -180,7 +181,23 @@ function frame(){
  if(frameSeconds>=3){
   const fps=frameCount/frameSeconds;
   const pixelRatio=renderer.getPixelRatio();
-  if(fps<29 && renderer.shadowMap.enabled){renderer.shadowMap.enabled=false;renderer.shadowMap.needsUpdate=true;}
+  // Hysteresis prevents rapid shadow toggling on integrated GPUs. Restore shadows
+  // after sustained recovery instead of leaving them permanently disabled.
+  if (fps < 29) {
+    shadowRecoverySeconds = 0;
+    if (renderer.shadowMap.enabled) {
+      renderer.shadowMap.enabled = false;
+      renderer.shadowMap.needsUpdate = true;
+    }
+  } else if (!renderer.shadowMap.enabled) {
+    shadowRecoverySeconds = fps >= 54 ? shadowRecoverySeconds + frameSeconds : 0;
+    if (shadowRecoverySeconds >= 12) {
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.needsUpdate = true;
+      shadowRecoverySeconds = 0;
+      qualityCooldown = 8;
+    }
+  }
   if(qualityCooldown===0&&fps<38&&pixelRatio>0.85){renderer.setPixelRatio(Math.max(0.85,pixelRatio-0.2));resize();qualityCooldown=8;}
   else if(qualityCooldown===0&&fps>58&&pixelRatio<Math.min(devicePixelRatio,1.25)){renderer.setPixelRatio(Math.min(Math.min(devicePixelRatio,1.25),pixelRatio+0.1));resize();qualityCooldown=8;}
   frameCount=0;frameSeconds=0;
