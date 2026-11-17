@@ -1,127 +1,103 @@
-import "@babylonjs/loaders/glTF";
 import "@babylonjs/core/Meshes/thinInstanceMesh";
-import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
+import { VertexData } from "@babylonjs/core/Meshes/mesh.vertexData";
+import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
+import { Color3 } from "@babylonjs/core/Maths/math.color";
 import { Matrix, Quaternion, Vector3 } from "@babylonjs/core/Maths/math.vector";
 import type { Scene } from "@babylonjs/core/scene";
 import type { ForestTree } from "./installOakForest";
 
-type Patch = { x: number; z: number; matrix: Matrix };
-/** Detailed GLB near player; continuous textured meadow covers the remaining terrain. */
-export async function installGrassPatches(scene: Scene, forest: readonly ForestTree[]): Promise<void> {
-  const result = await SceneLoader.ImportMeshAsync("", "/models/", "grass.glb", scene);
-  if (scene.isDisposed) return;
-  const meshes = result.meshes.filter((mesh): mesh is Mesh => mesh instanceof Mesh && mesh.getTotalVertices() > 0);
-  if (!meshes.length) throw new Error("Grass GLB has no visible meshes");
-  const vertices = meshes.reduce((sum, mesh) => sum + mesh.getTotalVertices(), 0);
-  if (vertices > 180000 || meshes.length > 20) {
-    for (const mesh of result.meshes) mesh.dispose(false, true);
-    console.warn("[Rewild] Grass GLB exceeds safe geometry budget:", vertices);
-    return;
+/** Tiny tapered 3D blades: one source mesh, one material, bounded GPU instances. */
+export function installGrassPatches(scene: Scene, forest: readonly ForestTree[]): void {
+  const grass = new Mesh("stylized-grass-source", scene);
+  const positions: number[] = [];
+  const indices: number[] = [];
+  const colors: number[] = [];
+  // Three thin tapered blades per tuft, not upright rectangular billboards.
+  for (let blade = 0; blade < 3; blade++) {
+    const angle = blade * Math.PI * 2 / 3;
+    const dx = Math.cos(angle);
+    const dz = Math.sin(angle);
+    const base = positions.length / 3;
+    const height = 0.24 + blade * 0.055;
+    const spread = 0.075;
+    positions.push(-dx * spread, 0.012, -dz * spread,
+      dx * spread, 0.012, dz * spread,
+      dx * 0.035, height, dz * 0.035);
+    indices.push(base, base + 1, base + 2);
+    const shade = [0.78, 0.9, 1][blade];
+    for (let i = 0; i < 3; i++) colors.push(0.36 * shade, 0.53 * shade, 0.29 * shade, 1);
   }
-  let min = new Vector3(Infinity, Infinity, Infinity);
-  let max = new Vector3(-Infinity, -Infinity, -Infinity);
-  const parts = meshes.map(mesh => {
-    mesh.computeWorldMatrix(true);
-    const world = mesh.getWorldMatrix().clone();
-    const box = mesh.getBoundingInfo().boundingBox;
-    min = Vector3.Minimize(min, box.minimumWorld);
-    max = Vector3.Maximize(max, box.maximumWorld);
-    return { mesh, world };
-  });
-  const width = Math.max(max.x - min.x, max.z - min.z, 0.001);
-  const baseScale = Math.min(4, Math.max(0.015, 2.1 / width));
-  const offset = Matrix.Translation(-(min.x + max.x) / 2, -min.y, -(min.z + max.z) / 2);
+  const data = new VertexData();
+  data.positions = positions;
+  data.indices = indices;
+  data.colors = colors;
+  const normals: number[] = [];
+  VertexData.ComputeNormals(positions, indices, normals);
+  data.normals = normals;
+  data.applyToMesh(grass);
+  const material = new StandardMaterial("stylized-grass-material", scene);
+  material.diffuseColor = Color3.White();
+  material.specularColor = Color3.Black();
+  material.backFaceCulling = false;
+  grass.material = material;
+  grass.isPickable = false;
+  grass.alwaysSelectAsActiveMesh = true;
 
-  let seed = 745123;
-  const random = () => {
-    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
-    return seed / 4294967296;
-  };
-  const patches: Patch[] = [];
-  const spacing = 1.7;
-  for (let gx = -40; gx <= 40; gx++) {
-    for (let gz = -40; gz <= 40; gz++) {
-      const x = gx * spacing + (random() - 0.5) * 0.6;
-      const z = gz * spacing + (random() - 0.5) * 0.6;
-      if (Math.abs(x) > 68 || Math.abs(z) > 68) continue;
-      if (Math.abs(x) < 4.3 && Math.abs(z) < 7.5) continue;
-      if (Math.abs(x + 12) < 8 && Math.abs(z - 46) < 7) continue;
-      if (z >= 8 && z <= 58 && Math.abs(x - Math.sin(z * 0.12) * 3) < 2.5) continue;
-      if (forest.some(tree => Math.hypot(x - tree.x, z - tree.z) < 1.5 * tree.scale)) continue;
-      const rotation = Quaternion.RotationAxis(Vector3.Up(), random() * Math.PI * 2);
-      const scale = baseScale * (0.85 + random() * 0.3);
-      const position = new Vector3(x, 0.035, z);
-      patches.push({
-        x, z,
-        matrix: offset.multiply(Matrix.Compose(new Vector3(scale, scale, scale), rotation, position)),
-      });
-    }
-  }
-
-  for (const part of parts) {
-    part.mesh.parent = null;
-    part.mesh.position.setAll(0);
-    part.mesh.rotation.setAll(0);
-    part.mesh.rotationQuaternion = null;
-    part.mesh.scaling.setAll(1);
-    part.mesh.isPickable = false;
-    part.mesh.alwaysSelectAsActiveMesh = true;
-  }
-
-  // Hard geometry budget: keep detailed GLB triangles under control.
-  const maxNear = Math.min(240, Math.max(24, Math.floor(650000 / Math.max(vertices, 1))));
-  let nearLimit = maxNear;
-  let averageFps = 60;
+  // The existing ground texture provides inexpensive coverage at long range.
+  // Only 420 tiny tufts are rendered around the player, in a single draw batch.
+  const MAX_TUFTS = 420;
   let lastX = Infinity;
   let lastZ = Infinity;
-  let dirty = true;
-
   const update = () => {
-    if (scene.isDisposed) return;
     const root = scene.getTransformNodeByName("player-root");
-    const x = root?.position.x ?? 0;
-    const z = root?.position.z ?? 9;
-    if (!dirty && Math.hypot(x - lastX, z - lastZ) < 2) return;
-    dirty = false;
-    lastX = x;
-    lastZ = z;
-    const nearby = patches
-      .map(patch => ({ patch, distance: (patch.x - x) ** 2 + (patch.z - z) ** 2 }))
-      .filter(item => item.distance < 30 * 30)
-      .sort((a, b) => a.distance - b.distance);
-    // Near radius scales with the budget so detailed patches do not become sparse.
-    const nearRadius = Math.min(13, Math.max(4.5, Math.sqrt(nearLimit / Math.PI) * spacing * 0.9));
-    const near = nearby.filter(item => item.distance < nearRadius ** 2).slice(0, nearLimit);
-    for (const part of parts) {
-      const matrices = new Float32Array(near.length * 16);
-      near.forEach((item, i) => part.world.multiply(item.patch.matrix).copyToArray(matrices, i * 16));
-      part.mesh.thinInstanceSetBuffer("matrix", matrices, 16, true);
+    const px = root?.position.x ?? 0;
+    const pz = root?.position.z ?? 9;
+    if (Math.hypot(px - lastX, pz - lastZ) < 2.5) return;
+    lastX = px;
+    lastZ = pz;
+    const matrices = new Float32Array(MAX_TUFTS * 16);
+    let count = 0;
+    // Deterministic global grid: tufts do not jump when the camera moves.
+    const spacing = 1.05;
+    const cx = Math.floor(px / spacing);
+    const cz = Math.floor(pz / spacing);
+    for (let gx = cx - 12; gx <= cx + 12; gx++) {
+      for (let gz = cz - 12; gz <= cz + 12; gz++) {
+        if (count >= MAX_TUFTS) break;
+        let seed = (Math.imul(gx, 73856093) ^ Math.imul(gz, 19349663) ^ 0x51f15e) >>> 0;
+        const random = () => {
+          seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+          return seed / 4294967296;
+        };
+        const x = gx * spacing + (random() - 0.5) * 0.6;
+        const z = gz * spacing + (random() - 0.5) * 0.6;
+        if ((x - px) ** 2 + (z - pz) ** 2 > 12 * 12) continue;
+        if (Math.abs(x) > 68 || Math.abs(z) > 68) continue;
+        if (Math.abs(x) < 4.3 && Math.abs(z) < 7.5) continue;
+        if (Math.abs(x + 12) < 8 && Math.abs(z - 46) < 7) continue;
+        if (z >= 8 && z <= 58 && Math.abs(x - Math.sin(z * 0.12) * 3) < 2.5) continue;
+        if (forest.some(tree => Math.hypot(x - tree.x, z - tree.z) < 1.5 * tree.scale)) continue;
+        const scale = 0.75 + random() * 0.55;
+        const matrix = Matrix.Compose(
+          new Vector3(scale, scale, scale),
+          Quaternion.RotationAxis(Vector3.Up(), random() * Math.PI * 2),
+          new Vector3(x, 0.015, z),
+        );
+        matrix.copyToArray(matrices, count * 16);
+        count++;
+      }
     }
+    grass.thinInstanceSetBuffer("matrix", matrices.subarray(0, count * 16), 16, true);
   };
   update();
   let elapsed = 0;
-  let adjustment = 0;
   const observer = scene.onBeforeRenderObservable.add(() => {
-    const dt = Math.min(scene.getEngine().getDeltaTime() / 1000, 0.1);
-    elapsed += dt;
-    adjustment += dt;
-    if (dt > 0) averageFps = averageFps * 0.95 + Math.min(100, 1 / dt) * 0.05;
-    if (adjustment >= 3) {
-      adjustment = 0;
-      if (averageFps < 43) {
-        nearLimit = Math.max(16, Math.floor(nearLimit * 0.8));
-        dirty = true;
-      } else if (averageFps > 57) {
-        nearLimit = Math.min(maxNear, Math.ceil(nearLimit * 1.08));
-        dirty = true;
-      }
-    }
-    if (elapsed >= 0.5) {
-      elapsed = 0;
-      update();
-    }
+    elapsed += Math.min(scene.getEngine().getDeltaTime() / 1000, 0.1);
+    if (elapsed < 0.5) return;
+    elapsed = 0;
+    update();
   });
   scene.onDisposeObservable.add(() => scene.onBeforeRenderObservable.remove(observer));
-  console.info("[Rewild] Grass GLB only:", patches.length, "world patches; near cap", maxNear);
+  console.info("[Rewild] Procedural low-cost stylized grass enabled");
 }
