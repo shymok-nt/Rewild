@@ -113,14 +113,28 @@ function action(key:string){
 pauseButton.addEventListener("click",()=>action("p"));
 document.querySelectorAll<HTMLButtonElement>("[data-action]").forEach(button=>button.addEventListener("pointerdown",e=>{e.preventDefault();action(button.dataset.action||"");}));
 window.addEventListener("keydown",e=>{if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"," "].includes(e.key))e.preventDefault();if(!e.repeat)action(e.key);});
+document.addEventListener("visibilitychange",()=>{if(document.hidden&&!dead&&!paused){paused=true;pauseButton.textContent="▶";statusEl.hidden=false;statusEl.textContent="DURAKLATILDI · P İLE DEVAM";}});
 let touchStart:{x:number,y:number}|null=null;
 renderer.domElement.addEventListener("pointerdown",e=>touchStart={x:e.clientX,y:e.clientY});
 renderer.domElement.addEventListener("pointerup",e=>{if(!touchStart)return;const dx=e.clientX-touchStart.x,dy=e.clientY-touchStart.y;touchStart=null;if(Math.abs(dx)>35&&Math.abs(dx)>Math.abs(dy))action(dx>0?"ArrowRight":"ArrowLeft");else if(Math.abs(dy)>35)action(dy<0?"ArrowUp":"ArrowDown");});
 function resize(){const w=Math.max(1,app!.clientWidth),h=Math.max(1,app!.clientHeight);camera.aspect=w/h;camera.fov=h>w?72:62;camera.updateProjectionMatrix();renderer.setSize(w,h);}
 window.addEventListener("resize",resize);resize();
+let frameCount=0;
+let frameSeconds=0;
+let qualityCooldown=0;
 function frame(){
  requestAnimationFrame(frame);
  const dt=Math.min(clock.getDelta(),0.05);
+ frameCount++;
+ frameSeconds+=dt;
+ qualityCooldown=Math.max(0,qualityCooldown-dt);
+ if(frameSeconds>=3){
+  const fps=frameCount/frameSeconds;
+  const pixelRatio=renderer.getPixelRatio();
+  if(qualityCooldown===0&&fps<38&&pixelRatio>0.85){renderer.setPixelRatio(Math.max(0.85,pixelRatio-0.2));resize();qualityCooldown=8;}
+  else if(qualityCooldown===0&&fps>58&&pixelRatio<Math.min(devicePixelRatio,1.5)){renderer.setPixelRatio(Math.min(Math.min(devicePixelRatio,1.5),pixelRatio+0.1));resize();qualityCooldown=8;}
+  frameCount=0;frameSeconds=0;
+ }
  if(!paused&&!dead){
   const speed=Math.min(24,13+distance/450);
   distance+=dt*speed;
