@@ -193,6 +193,9 @@ export function buildEnvironment(scene: Scene, forestTrees: ForestTree[] = []): 
     if (placedRocks.some(rock => Math.hypot(rock.x-x,rock.z-z) < rock.radius + radius + 1.2)) continue;
     placedRocks.push({x,z,radius});
     const rock = rockBase.createInstance("rock-" + placedRocks.length);
+    // Placement/collision marker only. The visible rock is supplied by rock.glb.
+    // Never display the old smooth procedural stone while GLB loads (or if it fails).
+    rock.isVisible = false;
     rock.position.set(x, size * 0.28, z);
     rock.scaling.set(size * 1.4, size * 0.55, size);
     rock.rotation.y = random() * Math.PI;
