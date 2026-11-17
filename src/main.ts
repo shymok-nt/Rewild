@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { createHumanRunner, type RunnerPose } from "./humanRunner";
 import "./style.css";
 import { createCity } from "./city";
 import { HazardSystem } from "./hazards";
@@ -80,58 +80,9 @@ const playerShadow=new THREE.Mesh(
 playerShadow.rotation.x=-Math.PI/2;
 playerShadow.position.y=0.045;
 scene.add(playerShadow);
-const loader=new GLTFLoader();
-let mixer:THREE.AnimationMixer|null=null;
-const clips = new Map<string,THREE.AnimationAction>();
-let currentClip = "";
-function playAnimation(name: string): void {
-  if (currentClip === name || !mixer) return;
-  const next = clips.get(name) ?? clips.get("run");
-  if (!next) return;
-  const previous = clips.get(currentClip);
-  next.reset().setEffectiveWeight(1).setEffectiveTimeScale(1).play();
-  if (previous && previous !== next) next.crossFadeFrom(previous,0.16,true);
-  currentClip=name;
-}
-let avatar:THREE.Object3D|null=null;
-
-// Temporary animated model for the GLB pipeline; replace with art-directed human runner.
-const characterUrl="/assets/character.glb";
-let characterLoadFailed=false;
-let characterReady=false;
-loader.load(characterUrl,gltf=>{
-  avatar=gltf.scene;
-  characterLoadFailed=false;
-  characterReady=true;
-  const bounds=new THREE.Box3().setFromObject(avatar);
-  const height=Math.max(bounds.max.y-bounds.min.y,0.01);
-  avatar.scale.multiplyScalar(2.3/height);
-  const resized=new THREE.Box3().setFromObject(avatar);
-  avatar.position.y=-resized.min.y;
-  avatar.rotation.y=Math.PI;
-  avatar.traverse(o=>{if(o instanceof THREE.Mesh){o.castShadow=true;o.receiveShadow=true;}});
-  playerRoot.add(avatar);
-  mixer=new THREE.AnimationMixer(avatar);
-  const find=(regex:RegExp)=>gltf.animations.find(a=>regex.test(a.name));
-  const run=find(/run|jog/i)??find(/walk/i)??gltf.animations[0];
-  const jumpClip=find(/jump|leap/i);
-  const slideClip=find(/slide|crouch|duck/i);
-  if(run)clips.set("run",mixer.clipAction(run));
-  if(jumpClip)clips.set("jump",mixer.clipAction(jumpClip));
-  if(slideClip)clips.set("slide",mixer.clipAction(slideClip));
-  playAnimation("run");
-  restartButton.disabled=false;
-  if(paused && !dead){restartButton.textContent="KOŞUYA BAŞLA";statusEl.textContent="RUSH CITY · SOKAKLAR SENİN!";}
-  if (!dead && !paused) statusEl.hidden=true;
-},undefined,()=>{
-  characterLoadFailed=true;
-  characterReady=false;
-  paused=true;
-  pauseButton.textContent="▶";
-  restartButton.hidden=true;
-  statusEl.hidden=false;
-  statusEl.textContent="Karakter yüklenemedi. public/assets/character.glb dosyasını ve tarayıcı konsolunu kontrol edin.";
-});
+// Original procedural human runner; no network model loading or licensing dependency.
+const humanRunner = createHumanRunner();
+playerRoot.add(humanRunner.root);
 const clock=new THREE.Clock();
 let distance=0,coins=0,lane=0,laneVisual=0,slide=0,paused=true,dead=false;
 let best = 0;
@@ -145,8 +96,8 @@ const pickupEffects = new PickupEffects(scene);
 statusEl.hidden=false;
 statusEl.textContent="RUSH CITY · SOKAKLAR SENİN!";
 restartButton.hidden=false;
-restartButton.textContent="KARAKTER YÜKLENİYOR";
-restartButton.disabled=true;
+restartButton.textContent="KOŞUYA BAŞLA";
+restartButton.disabled=false;
 pauseButton.textContent="▶";
 function action(key:string){
  if(dead&&key!=="r"&&key!==" ")return;
@@ -155,7 +106,7 @@ function action(key:string){
  if(key==="ArrowRight"||key==="d"){const prev=lane;lane=clampLane(lane+1);if(prev!==lane)audio.lane();}
  if((key==="ArrowUp"||key===" "||key==="w")&&!jumpActive&&slide<=0){jumpActive=true;jumpElapsed=0;audio.jump();}
  if((key==="ArrowDown"||key==="s")&&slide<=0&&!jumpActive){slide=0.72;audio.slide();}
- if((key==="p"||key==="Escape")&&characterReady&&!characterLoadFailed){paused=!paused;pauseButton.textContent=paused?"▶":"Ⅱ";if(!dead){statusEl.hidden=!paused;if(paused)statusEl.textContent="DURAKLATILDI · P İLE DEVAM";else{restartButton.hidden=true;audio.start();}}}
+ if((key==="p"||key==="Escape")&&!dead){paused=!paused;pauseButton.textContent=paused?"▶":"Ⅱ";if(!dead){statusEl.hidden=!paused;if(paused)statusEl.textContent="DURAKLATILDI · P İLE DEVAM";else{restartButton.hidden=true;audio.start();}}}
  if(dead&&(key==="r"||key===" ")){restartButton.hidden=true;restartButton.textContent="YENİDEN OYNA";dead=false;paused=false;pauseButton.textContent="Ⅱ";distance=0;coins=0;lane=0;laneVisual=0;slide=0;jumpActive=false;jumpElapsed=0;hazards.reset();statusEl.hidden=true;audio.start();}
 }
 restartButton.addEventListener("click",()=>{audio.unlock();if(dead)action("r");else if(paused)action("p");});
@@ -208,18 +159,18 @@ function frame(){
   updateCity(distance);
   updateStreet(distance);
   updateRoad(distance);
-  mixer?.update(dt);
   const previousLaneVisual=laneVisual;
   laneVisual=THREE.MathUtils.damp(laneVisual,lane*laneWidth,13,dt);
   if(jumpActive){jumpElapsed=Math.min(jumpDuration,jumpElapsed+dt);if(jumpElapsed>=jumpDuration){jumpActive=false;}}
   const jumpHeight=jumpActive?jumpArc(jumpElapsed,jumpDuration):0;
-  playAnimation(jumpActive?"jump":slide>0?"slide":"run");
+  const pose: RunnerPose = jumpActive ? "jump" : slide > 0 ? "slide" : "run";
+  humanRunner.update(dt, pose, speed);
   if(slide>0)slide=Math.max(0,slide-dt);
   playerRoot.position.set(laneVisual,jumpHeight,0);
   playerShadow.position.x=laneVisual;
   playerShadow.scale.setScalar(1+jumpHeight*0.16);
   (playerShadow.material as THREE.MeshBasicMaterial).opacity=0.85-jumpHeight*0.25;
-  playerRoot.scale.y=slide>0?0.55:1;
+  playerRoot.scale.y=1; // Articulated slide pose controls height instead of scaling the whole avatar.
   camera.position.x=THREE.MathUtils.damp(camera.position.x,laneVisual*0.16,2.8,dt);
   camera.lookAt(camera.position.x*0.25,1.25,-16);
   for(const stripe of stripes){stripe.position.z+=dt*speed;if(stripe.position.z>12)stripe.position.z-=230;}
