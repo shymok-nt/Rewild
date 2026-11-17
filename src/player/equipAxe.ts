@@ -49,17 +49,17 @@ export async function equipAxe(
   neck.material = metal;
 
   const blade = MeshBuilder.CreateBox("axe-metal-blade", {
-    width: 0.28, height: 0.22, depth: 0.085,
+    width: 0.085, height: 0.22, depth: 0.28,
   }, scene);
   blade.parent = tool;
-  blade.position.set(-0.19, 0.42, 0);
+  blade.position.set(0, 0.42, 0.19);
   blade.material = metal;
 
   const cuttingEdge = MeshBuilder.CreateBox("axe-cutting-edge", {
-    width: 0.035, height: 0.26, depth: 0.09,
+    width: 0.09, height: 0.26, depth: 0.035,
   }, scene);
   cuttingEdge.parent = tool;
-  cuttingEdge.position.set(-0.345, 0.42, 0);
+  cuttingEdge.position.set(0, 0.42, 0.345);
   cuttingEdge.material = edge;
 
   for (const mesh of [handle, neck, blade, cuttingEdge]) mesh.isPickable = false;
@@ -77,7 +77,8 @@ export async function equipAxe(
       // Grip pivot sits in the palm; the shaft crosses the hand rather than
       // being mounted to the outer side of the forearm.
       socket.position.set(palm.x, palm.y, palm.z);
-      socket.rotation.set(0.52, 0.06, -0.18);
+      // +Z is the character-facing direction; lean the shaft forward.
+      socket.rotation.set(0.68, 0, 0.06);
       console.info("[Rewild] Procedural axe mounted at Hand_R grip");
     }
     if (!attachedHand) {
