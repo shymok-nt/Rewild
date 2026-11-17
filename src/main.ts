@@ -53,6 +53,17 @@ const updateStreet = createStreetDetails(scene);
 const playerRoot=new THREE.Group();scene.add(playerRoot);
 const loader=new GLTFLoader();
 let mixer:THREE.AnimationMixer|null=null;
+const clips = new Map<string,THREE.AnimationAction>();
+let currentClip = "";
+function playAnimation(name: string): void {
+  if (currentClip === name || !mixer) return;
+  const next = clips.get(name) ?? clips.get("run");
+  if (!next) return;
+  const previous = clips.get(currentClip);
+  next.reset().setEffectiveWeight(1).setEffectiveTimeScale(1).play();
+  if (previous && previous !== next) next.crossFadeFrom(previous,0.16,true);
+  currentClip=name;
+}
 let avatar:THREE.Object3D|null=null;
 
 // Temporary animated model for the GLB pipeline; replace with art-directed human runner.
@@ -64,11 +75,18 @@ loader.load(characterUrl,gltf=>{
   avatar.scale.multiplyScalar(2.3/height);
   const resized=new THREE.Box3().setFromObject(avatar);
   avatar.position.y=-resized.min.y;
+  avatar.rotation.y=Math.PI;
   avatar.traverse(o=>{if(o instanceof THREE.Mesh){o.castShadow=true;o.receiveShadow=true;}});
   playerRoot.add(avatar);
   mixer=new THREE.AnimationMixer(avatar);
-  const run=gltf.animations.find(a=>/run|jog/i.test(a.name))??gltf.animations.find(a=>/walk/i.test(a.name))??gltf.animations[0];
-  if(run)mixer.clipAction(run).play();
+  const find=(regex:RegExp)=>gltf.animations.find(a=>regex.test(a.name));
+  const run=find(/run|jog/i)??find(/walk/i)??gltf.animations[0];
+  const jumpClip=find(/jump|leap/i);
+  const slideClip=find(/slide|crouch|duck/i);
+  if(run)clips.set("run",mixer.clipAction(run));
+  if(jumpClip)clips.set("jump",mixer.clipAction(jumpClip));
+  if(slideClip)clips.set("slide",mixer.clipAction(slideClip));
+  playAnimation("run");
   statusEl.hidden=true;
 },undefined,()=>{
   statusEl.hidden=false;
@@ -112,6 +130,7 @@ function frame(){
   laneVisual=THREE.MathUtils.damp(laneVisual,lane*laneWidth,13,dt);
   if(jumpActive){jumpElapsed=Math.min(jumpDuration,jumpElapsed+dt);jump=jumpDuration-jumpElapsed;if(jumpElapsed>=jumpDuration){jumpActive=false;jump=0;}}
   const jumpHeight=jumpActive?Math.sin(jumpElapsed/jumpDuration*Math.PI)*1.8:0;
+  playAnimation(jumpActive?"jump":slide>0?"slide":"run");
   if(slide>0)slide=Math.max(0,slide-dt);
   playerRoot.position.set(laneVisual,jumpHeight,0);
   playerRoot.scale.y=slide>0?0.55:1;
