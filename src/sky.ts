@@ -66,7 +66,8 @@ export function createSky(scene:THREE.Scene): (time:number,camera:THREE.Camera)=
     dome.position.copy(camera.position);
     for(let i=0;i<clouds.length;i++){
       const cloud=clouds[i];
-      cloud.position.x+=Math.sin(time*0.1+i)*0.001;
+      const side=i%2===0?-1:1;
+      cloud.position.x=side*(28+(i%4)*13)+Math.sin(time*0.08+i)*1.5;
     }
   };
 }
