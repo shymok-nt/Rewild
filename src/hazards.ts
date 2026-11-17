@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { avoidsObstacle, crossesPlayer } from "./rules";
 
 export type HazardKind = "coin" | "barrier" | "gate" | "vehicle";
 export interface Hazard {
@@ -164,14 +165,13 @@ export class HazardSystem {
       item.root.position.z = item.z;
       if (item.kind === "coin") item.root.rotation.y += dt * 3.2;
       // Swept collision prevents tunnelling when a frame takes longer than expected.
-      if (oldZ <= 0.45 && item.z >= -0.45 && item.lane === playerLane) {
+      if (crossesPlayer(oldZ,item.z) && item.lane === playerLane) {
         if (item.kind === "coin") {
           coins++;
           this.release(i);
           continue;
         }
-        const safe = item.kind === "barrier" ? jumpHeight > 0.8 :
-          item.kind === "gate" ? sliding : false;
+        const safe = avoidsObstacle(item.kind,jumpHeight,sliding);
         if (!safe) crashed = true;
         this.release(i);
         if (crashed) break;
