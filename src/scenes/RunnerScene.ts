@@ -51,7 +51,7 @@ export class RunnerScene extends Phaser.Scene {
 
     this.overlay = this.add.text(W / 2, H / 2, "", { fontFamily: "Arial", fontSize: "28px", color: "#ffffff", align: "center", stroke: "#182b49", strokeThickness: 7 }).setOrigin(0.5).setDepth(30).setVisible(false);
     this.stage.add(this.children.list.filter(child => child !== this.stage));
-    const resize = (size: Phaser.Structs.Size) => this.stage.setScale(size.width / W, size.height / H);
+    const resize = (size: { width: number; height: number }) => this.stage.setScale(size.width / W, size.height / H);
     this.scale.on("resize", resize);
     resize(this.scale.gameSize);
     try { this.best = Number(localStorage.getItem("rush-city-best") || 0); } catch {}
