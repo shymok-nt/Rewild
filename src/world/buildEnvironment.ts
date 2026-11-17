@@ -55,13 +55,13 @@ export function buildEnvironment(scene: Scene, forestTrees: ForestTree[] = []): 
 
   const ground = MeshBuilder.CreateGround("walkable-meadow", { width: 140, height: 140, subdivisions: 4 }, scene);
   // Grass004 1K PBR maps (ambientCG). All texture assets live in
-  // public/textures/ground; the 3D ground mesh/collisions remain unchanged.
+  // public/models; the 3D ground mesh/collisions remain unchanged.
   const groundMaterial = new PBRMaterial("grass004-ground-pbr", scene);
   groundMaterial.metallic = 0;
   groundMaterial.roughness = 1;
-  const colorMap = new Texture("/textures/ground/grass-color.jpg", scene);
-  const normalMap = new Texture("/textures/ground/grass-normal.jpg", scene);
-  const ormMap = new Texture("/textures/ground/grass-orm.jpg", scene);
+  const colorMap = new Texture("/models/grass-color.jpg", scene);
+  const normalMap = new Texture("/models/grass-normal.jpg", scene);
+  const ormMap = new Texture("/models/grass-orm.jpg", scene);
   for (const map of [colorMap, normalMap, ormMap]) {
     map.uScale = 12;
     map.vScale = 12;
