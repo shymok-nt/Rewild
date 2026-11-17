@@ -61,18 +61,18 @@ export function createGrassPrototype(scene: Scene): void {
   data.applyToMesh(mesh);
 
   const material = new StandardMaterial("grass-prototype-material", scene);
-  material.diffuseColor = Color3.White();
+  material.diffuseColor = new Color3(1.15, 1.25, 1.08);
   material.specularColor = Color3.Black();
   material.backFaceCulling = false;
   mesh.material = material;
   mesh.isPickable = false;
-  mesh.alwaysSelectAsActiveMesh = false;
+  mesh.alwaysSelectAsActiveMesh = true;
 
   // A capped, deterministic moving window. Never allocate geometry per tuft.
   // Update only when the player crosses a grid cell, not on camera rotation.
-  const SPACING = 0.52;
-  const RADIUS = 6.5;
-  const MAX_TUFTS = 320;
+  const SPACING = 0.72;
+  const RADIUS = 9;
+  const MAX_TUFTS = 220;
   let previousX = Infinity;
   let previousZ = Infinity;
   const update = () => {
@@ -98,13 +98,17 @@ export function createGrassPrototype(scene: Scene): void {
         };
         const x = gx * SPACING + (rand() - 0.5) * 0.3;
         const z = gz * SPACING + (rand() - 0.5) * 0.3;
-        if ((x - px) ** 2 + (z - pz) ** 2 > RADIUS * RADIUS) continue;
+        const distance = Math.hypot(x - px, z - pz);
+        if (distance > RADIUS) continue;
+        // Deterministic sparse distribution avoids a solid dark circular carpet.
+        if (rand() > 0.56) continue;
         if (Math.abs(x) > 68 || Math.abs(z) > 68) continue;
         // Preserve the path, cottage, and spawn clearing.
         if (Math.abs(x) < 4.3 && Math.abs(z) < 7.5) continue;
         if (Math.abs(x + 12) < 8 && Math.abs(z - 46) < 7) continue;
         if (z >= 8 && z <= 58 && Math.abs(x - Math.sin(z * 0.12) * 3) < 2.0) continue;
-        const size = 0.72 + rand() * 0.48;
+        const fade = Math.min(1, Math.max(0.08, (RADIUS - distance) / 3.5));
+        const size = (0.48 + rand() * 0.37) * fade;
         Matrix.Compose(
           new Vector3(size, size, size),
           Quaternion.RotationAxis(Vector3.Up(), rand() * Math.PI * 2),
