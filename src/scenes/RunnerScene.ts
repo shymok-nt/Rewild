@@ -15,6 +15,8 @@ export class RunnerScene extends Phaser.Scene {
   private obstacles: { lane: number; z: number; kind: number; collected: boolean }[] = [];
   private nextSpawn = 28;
   private coins = 0;
+  private combo = 0;
+  private totalCoins = 0;
   private best = 0;
   private gameOver = false;
   private overlay!: Phaser.GameObjects.Text;
@@ -53,7 +55,7 @@ export class RunnerScene extends Phaser.Scene {
     this.scale.on("resize", resize);
     this.events.once("shutdown", () => this.scale.off("resize", resize));
     resize(this.scale.gameSize);
-    try { this.best = Number(localStorage.getItem("rush-city-best") || 0); } catch {}
+    try { this.best = Number(localStorage.getItem("rush-city-best") || 0); this.totalCoins = Number(localStorage.getItem("rush-city-coins") || 0); } catch {}
     const kb = this.input.keyboard;
     if (!kb) throw new Error("Keyboard input unavailable");
     this.keys = kb.addKeys("A,D,LEFT,RIGHT,SPACE,UP,DOWN,S,R") as Record<string, Phaser.Input.Keyboard.Key>;
@@ -78,13 +80,13 @@ export class RunnerScene extends Phaser.Scene {
   private hit(key: string): boolean { return Phaser.Input.Keyboard.JustDown(this.keys[key]); }
   private reset(): void {
     this.gameOver = false; this.overlay.setVisible(false); this.distance = 0;
-    this.coins = 0; this.nextSpawn = 28; this.obstacles = []; this.lane = 0;
+    this.coins = 0; this.combo = 0; this.nextSpawn = 28; this.obstacles = []; this.lane = 0;
     this.visualLane = 0; this.jumpTime = 0; this.slideTime = 0;
   }
   private lose(): void {
     this.gameOver = true;
     this.best = Math.max(this.best, Math.floor(this.distance));
-    try { localStorage.setItem("rush-city-best", String(this.best)); } catch {}
+    try { localStorage.setItem("rush-city-best", String(this.best)); localStorage.setItem("rush-city-coins", String(this.totalCoins)); } catch {}
     this.overlay.setText("KOŞU BİTTİ!\n" + Math.floor(this.distance) + " METRE  •  " + this.coins + " ALTIN\nREKOR: " + this.best + " m\nR / DOKUN: TEKRAR").setVisible(true);
   }
 
@@ -107,15 +109,15 @@ export class RunnerScene extends Phaser.Scene {
     }
     for (const o of this.obstacles) {
       if (!o.collected && o.z >= previousDistance && o.z <= this.distance + 2.5 && o.lane === this.lane) {
-        if (o.kind === 3) { this.coins++; o.collected = true; }
-        else if ((o.kind === 0 && this.jumpTime > 0.18) || (o.kind === 1 && this.slideTime > 0.12)) o.collected = true;
+        if (o.kind === 3) { this.coins++; this.totalCoins++; this.combo++; o.collected = true; }
+        else if ((o.kind === 0 && this.jumpTime > 0.18) || (o.kind === 1 && this.slideTime > 0.12)) { o.collected = true; this.combo++; }
         else { this.lose(); break; }
       }
     }
     this.obstacles = this.obstacles.filter(o => o.z > this.distance - 6);
     this.runClock += dt * 12;
     this.draw();
-    this.hud.setText(`MESAFE ${Math.floor(this.distance)} m   •   ALTIN ${this.coins}   •   REKOR ${this.best} m   •   ${Math.round(this.game.loop.actualFps)} FPS`);
+    this.hud.setText(`MESAFE ${Math.floor(this.distance)} m   •   ALTIN ${this.coins}   •   KOMBO ${this.combo}   •   REKOR ${this.best} m   •   ${Math.round(this.game.loop.actualFps)} FPS`);
   }
 
   private roadY(t: number): number { return lerp(HORIZON, BOTTOM, t * t); }
@@ -163,10 +165,16 @@ export class RunnerScene extends Phaser.Scene {
       const half = this.roadHalf(t);
       const bw = 18 + t * 105;
       const bh = 35 + t * 210;
+      const roof = y - bh;
       for (const side of [-1, 1]) {
         const x = W / 2 + side * (half + 38 + t * 42);
         g.fillStyle((i + side + 12) % 3 === 0 ? 0xffc58e : 0x84a9d4);
-        g.fillRect(side < 0 ? x - bw : x, y - bh, bw, bh);
+        const left = side < 0 ? x - bw : x;
+        g.fillRect(left, roof, bw, bh);
+        g.fillStyle(0x263d65, 0.16);
+        g.fillRect(left + bw * 0.82, roof, bw * 0.18, bh);
+        g.fillStyle(0x465a78);
+        g.fillRect(left - 3, roof - Math.max(2, t * 8), bw + 6, Math.max(3, t * 8));
         g.fillStyle(0xfff3c6, 0.85);
         const wx = side < 0 ? x - bw + bw * 0.23 : x + bw * 0.23;
         g.fillRect(wx, y - bh * 0.78, Math.max(3, bw * 0.17), Math.max(5, bh * 0.15));
