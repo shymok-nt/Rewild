@@ -110,14 +110,15 @@ loader.load(characterUrl,gltf=>{
   if(jumpClip)clips.set("jump",mixer.clipAction(jumpClip));
   if(slideClip)clips.set("slide",mixer.clipAction(slideClip));
   playAnimation("run");
-  statusEl.hidden=true;
+  if (!dead && !paused) statusEl.hidden=true;
 },undefined,()=>{
   statusEl.hidden=false;
   statusEl.textContent="3D karakter modeli henüz kurulmadı: public/assets/character.glb gerekiyor. Sahne hazır, karakter varlığı bekleniyor.";
 });
 const clock=new THREE.Clock();
 let distance=0,coins=0,lane=0,laneVisual=0,jump=0,slide=0,paused=false,dead=false;
-let best = Number(localStorage.getItem("rush-city-best") || 0);
+let best = 0;
+try { best = Math.max(0, Number(localStorage.getItem("rush-city-best") || 0) || 0); } catch { /* private browsing */ }
 let jumpElapsed = 0;
 let jumpActive = false;
 const jumpDuration = 0.82;
@@ -185,7 +186,7 @@ function frame(){
     audio.crash();
     dead = true;
     best=Math.max(best,Math.floor(distance));
-    localStorage.setItem("rush-city-best",String(best));
+    try { localStorage.setItem("rush-city-best",String(best)); } catch { /* storage disabled */ }
     statusEl.hidden = false;
     restartButton.hidden = false;
     statusEl.textContent = "KOŞU BİTTİ · "+Math.floor(distance)+" m · REKOR "+best+" m · R İLE TEKRAR";
