@@ -19,6 +19,15 @@ export async function loadSurvivor(scene: Scene, parent: TransformNode) {
   for (const node of result.meshes) {
     if (!node.parent) node.parent = anchor;
   }
+  // This GLB uses a node hierarchy (not a skinned skeleton).
+  // Its Hand_R mesh is the correct attachment point for tools.
+  const rightHand = result.meshes.find(mesh => mesh.name === "Hand_R") ?? null;
+  const shoulder = result.meshes.find(mesh => mesh.name === "Shoulder_R") ?? null;
+  const elbow = result.meshes.find(mesh => mesh.name === "Elbow_R") ?? null;
+  const shoulderRest = shoulder?.rotation.clone();
+  const elbowRest = elbow?.rotation.clone();
+  let chopTime = 1;
+  let wasHarvesting = false;
   const animations = new Map<string, AnimationGroup>();
   for (const group of result.animationGroups) {
     group.stop();
@@ -34,8 +43,23 @@ export async function loadSurvivor(scene: Scene, parent: TransformNode) {
   };
   play("idle");
   return {
-    update(_dt: number, moving: boolean, sprinting: boolean, _airborne: boolean, harvesting = false) {
-      play(harvesting ? "walk" : moving ? (sprinting ? "run" : "walk") : "idle");
+    rightHand,
+    update(dt: number, moving: boolean, sprinting: boolean, _airborne: boolean, harvesting = false) {
+      if (harvesting && !wasHarvesting) {
+        chopTime = 0;
+        active?.stop();
+        active = null;
+      }
+      wasHarvesting = harvesting;
+      if (harvesting) {
+        // One raised-arm chop, synchronized with the 550ms harvest window.
+        chopTime = Math.min(1, chopTime + dt / 0.55);
+        const swing = Math.sin(chopTime * Math.PI);
+        if (shoulder && shoulderRest) shoulder.rotation.copyFrom(shoulderRest).addInPlaceFromFloats(-0.95 * swing, 0, -0.22 * swing);
+        if (elbow && elbowRest) elbow.rotation.copyFrom(elbowRest).addInPlaceFromFloats(-0.42 * swing, 0, 0);
+      } else {
+        play(moving ? (sprinting ? "run" : "walk") : "idle");
+      }
     },
     dispose() {
       for (const group of result.animationGroups) group.dispose();
