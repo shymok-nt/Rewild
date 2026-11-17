@@ -71,10 +71,43 @@ export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
   for (const mesh of staticCasters) shadows.addShadowCaster(mesh);
   const registered = new Set(staticCasters);
   let shadowCheckElapsed = 0;
+  // A small moving budget of oak instances casts real shadows near the player.
+  // Avoid submitting the entire instanced forest to the 1024px shadow map.
+  const nearbyOakCasters = new Set<import("@babylonjs/core/Meshes/abstractMesh").AbstractMesh>();
+  const MAX_SHADOW_TREES = 4;
+  const SHADOW_RADIUS_SQUARED = 22 * 22;
   scene.onBeforeRenderObservable.add(() => {
     shadowCheckElapsed += Math.min(engine.getDeltaTime(), 100);
     if (shadowCheckElapsed < 1000) return;
     shadowCheckElapsed = 0;
+    const px = player.root.position.x;
+    const pz = player.root.position.z;
+    const closest = scene.transformNodes
+      .filter(node => node.name === "oak-forest")
+      .map(node => {
+        const dx = node.position.x - px;
+        const dz = node.position.z - pz;
+        return { node, distanceSquared: dx * dx + dz * dz };
+      })
+      .filter(item => item.distanceSquared < SHADOW_RADIUS_SQUARED)
+      .sort((a, b) => a.distanceSquared - b.distanceSquared)
+      .slice(0, MAX_SHADOW_TREES);
+    const wanted = new Set<import("@babylonjs/core/Meshes/abstractMesh").AbstractMesh>();
+    for (const { node } of closest) {
+      for (const mesh of node.getChildMeshes(false)) {
+        if (mesh.isEnabled() && mesh.getTotalVertices() > 0) wanted.add(mesh);
+      }
+    }
+    for (const mesh of nearbyOakCasters) {
+      if (wanted.has(mesh)) continue;
+      shadows.removeShadowCaster(mesh);
+      nearbyOakCasters.delete(mesh);
+    }
+    for (const mesh of wanted) {
+      if (nearbyOakCasters.has(mesh)) continue;
+      shadows.addShadowCaster(mesh, false);
+      nearbyOakCasters.add(mesh);
+    }
     for (const mesh of scene.meshes) {
       if (registered.has(mesh) || !mesh.isEnabled()) continue;
       if (!mesh.isDescendantOf(player.root)) continue;
