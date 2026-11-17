@@ -30,15 +30,41 @@ export function createCity(scene: THREE.Scene): (distance: number) => void {
     const facade = facades[(i * 3) % facades.length];
     block(group, facade, x, height * 0.5, 0, width, height, 8);
     block(group, roof, x, height + 0.18, 0, width + 0.45, 0.36, 8.45);
-    // Windows are placed on the street-facing facade.
+    // Three instanced layers replace hundreds of individual window draw calls.
     const frontX = x - side * (width * 0.5 + 0.035);
-    for (let floor = 1; floor < Math.floor(height / 2.3); floor++) {
-      for (let col = -1; col <= 1; col++) {
-        const z = col * 2.1;
-        const y = floor * 2.2 + 0.55;
-        block(group, trim, frontX - side * 0.03, y, z, 0.14, 1.55, 1.45);
-        block(group, glass, frontX - side * 0.13, y, z, 0.15, 1.25, 1.15);
-        block(group, trim, frontX - side * 0.2, y - 0.72, z, 0.22, 0.16, 1.55);
+    const floorCount = Math.max(0, Math.floor(height / 2.3) - 1);
+    const windowCount = floorCount * 3;
+    if (windowCount > 0) {
+      const frameBatch = new THREE.InstancedMesh(box, trim, windowCount);
+      const glassBatch = new THREE.InstancedMesh(box, glass, windowCount);
+      const sillBatch = new THREE.InstancedMesh(box, trim, windowCount);
+      const matrix = new THREE.Matrix4();
+      const pos = new THREE.Vector3();
+      const scale = new THREE.Vector3();
+      const rotation = new THREE.Quaternion();
+      const set = (batch: THREE.InstancedMesh, index: number, px: number, py: number, pz: number,
+        w: number, h: number, d: number) => {
+        pos.set(px, py, pz);
+        scale.set(w, h, d);
+        matrix.compose(pos, rotation, scale);
+        batch.setMatrixAt(index, matrix);
+      };
+      let n = 0;
+      for (let floor = 1; floor <= floorCount; floor++) {
+        for (let col = -1; col <= 1; col++) {
+          const z = col * 2.1;
+          const y = floor * 2.2 + 0.55;
+          set(frameBatch, n, frontX - side * 0.03, y, z, 0.14, 1.55, 1.45);
+          set(glassBatch, n, frontX - side * 0.13, y, z, 0.15, 1.25, 1.15);
+          set(sillBatch, n, frontX - side * 0.2, y - 0.72, z, 0.22, 0.16, 1.55);
+          n++;
+        }
+      }
+      for (const batch of [frameBatch, glassBatch, sillBatch]) {
+        batch.instanceMatrix.needsUpdate = true;
+        batch.receiveShadow = true;
+        batch.computeBoundingSphere();
+        group.add(batch);
       }
     }
     block(group, trim, frontX - side * 0.35, 2.3, 0, 0.65, 0.24, 4.5);
