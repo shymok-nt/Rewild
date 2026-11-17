@@ -22,19 +22,23 @@ export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: r
     if (scene.isDisposed) { loaded.dispose(); return; }
     model = loaded;
     fallback.setVisible(false);
+    // First-person view: do not render the full-body survivor over the camera.
+    for (const mesh of loaded.rightHand?.getScene().meshes ?? []) {
+      if (mesh.isDescendantOf(root)) mesh.isVisible = false;
+    }
   }).catch(error => {
     console.warn("Survivor GLB unavailable; using built-in explorer.", error);
   });
   // Keep zoom focused on the character's torso rather than their feet.
   const cameraFocus = new TransformNode("player-camera-focus", scene);
   cameraFocus.parent = root;
-  cameraFocus.position.y = 1.45;
+  cameraFocus.position.y = 1.68;
   camera.lockedTarget = cameraFocus;
-  camera.radius = 12;
-  camera.lowerRadiusLimit = 5;
-  camera.upperRadiusLimit = 22;
-  camera.lowerBetaLimit = 0.3;
-  camera.upperBetaLimit = 1.45;
+  camera.radius = 0.06;
+  camera.lowerRadiusLimit = 0.06;
+  camera.upperRadiusLimit = 0.06;
+  camera.lowerBetaLimit = 0.12;
+  camera.upperBetaLimit = Math.PI - 0.12;
   camera.panningSensibility = 0;
   // Click the canvas once to capture the pointer; Esc releases it.
   camera.inputs.removeByType("ArcRotateCameraPointersInput");
@@ -85,8 +89,10 @@ export function createPlayer(scene: Scene, camera: ArcRotateCamera, obstacles: r
       const next = resolveMovement(root.position.x, root.position.z, step.x, step.z, obstacles);
       root.position.x = next.x;
       root.position.z = next.z;
-      root.rotation.y = Math.atan2(direction.x, direction.z);
+
     }
+    // Face the camera heading, including while strafing or standing still.
+    root.rotation.y = -camera.alpha - Math.PI / 2;
     // Ground plane is y=0. Phase 2 uses simple gravity, not a full physics engine.
     if (grounded && keys.has("Space")) {
       verticalVelocity = 7;
