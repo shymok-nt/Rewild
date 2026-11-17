@@ -2,44 +2,11 @@ import "@babylonjs/loaders/glTF";
 import "@babylonjs/core/Meshes/thinInstanceMesh";
 import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
-import { VertexData } from "@babylonjs/core/Meshes/mesh.vertexData";
-import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
-import { Color3 } from "@babylonjs/core/Maths/math.color";
 import { Matrix, Quaternion, Vector3 } from "@babylonjs/core/Maths/math.vector";
 import type { Scene } from "@babylonjs/core/scene";
 import type { ForestTree } from "./installOakForest";
 
-type Patch = { x: number; z: number; matrix: Matrix; cheap: Matrix };
-function makeLowPolyGrass(scene: Scene): Mesh {
-  const mesh = new Mesh("grass-medium-lod-source", scene);
-  // Three crossed, tapered blades, only 3 triangles per clump.
-  const positions: number[] = [];
-  const indices: number[] = [];
-  for (let i = 0; i < 3; i++) {
-    const angle = i * Math.PI / 3;
-    const dx = Math.cos(angle) * 0.38;
-    const dz = Math.sin(angle) * 0.38;
-    const start = positions.length / 3;
-    positions.push(-dx, 0.03, -dz, dx, 0.03, dz, 0, 0.88 + i * 0.12, 0);
-    indices.push(start, start + 1, start + 2);
-  }
-  const data = new VertexData();
-  data.positions = positions;
-  data.indices = indices;
-  const normals: number[] = [];
-  VertexData.ComputeNormals(positions, indices, normals);
-  data.normals = normals;
-  data.applyToMesh(mesh);
-  const material = new StandardMaterial("grass-medium-lod-mat", scene);
-  material.diffuseColor = new Color3(0.32, 0.47, 0.25);
-  material.specularColor = Color3.Black();
-  material.backFaceCulling = false;
-  mesh.material = material;
-  mesh.isPickable = false;
-  mesh.alwaysSelectAsActiveMesh = true;
-  return mesh;
-}
-
+type Patch = { x: number; z: number; matrix: Matrix };
 /** Dense world coverage: GLB near player, cheap 9-triangle LOD farther away,
  * and existing meadow material at the horizon. Geometry is never duplicated. */
 export async function installGrassPatches(scene: Scene, forest: readonly ForestTree[]): Promise<void> {
@@ -66,7 +33,6 @@ export async function installGrassPatches(scene: Scene, forest: readonly ForestT
   const width = Math.max(max.x - min.x, max.z - min.z, 0.001);
   const baseScale = Math.min(4, Math.max(0.015, 2.1 / width));
   const offset = Matrix.Translation(-(min.x + max.x) / 2, -min.y, -(min.z + max.z) / 2);
-  const mediumMesh = makeLowPolyGrass(scene);
 
   let seed = 745123;
   const random = () => {
@@ -90,7 +56,6 @@ export async function installGrassPatches(scene: Scene, forest: readonly ForestT
       patches.push({
         x, z,
         matrix: offset.multiply(Matrix.Compose(new Vector3(scale, scale, scale), rotation, position)),
-        cheap: Matrix.Compose(new Vector3(1.1, 1, 1.1), rotation, position),
       });
     }
   }
@@ -106,10 +71,8 @@ export async function installGrassPatches(scene: Scene, forest: readonly ForestT
   }
 
   // Hard geometry budget: keep detailed GLB triangles under control.
-  const maxNear = Math.min(180, Math.max(24, Math.floor(450000 / Math.max(vertices, 1))));
-  const maxMedium = 1500;
+  const maxNear = Math.min(240, Math.max(24, Math.floor(650000 / Math.max(vertices, 1))));
   let nearLimit = maxNear;
-  let mediumLimit = maxMedium;
   let averageFps = 60;
   let lastX = Infinity;
   let lastZ = Infinity;
@@ -126,21 +89,16 @@ export async function installGrassPatches(scene: Scene, forest: readonly ForestT
     lastZ = z;
     const nearby = patches
       .map(patch => ({ patch, distance: (patch.x - x) ** 2 + (patch.z - z) ** 2 }))
-      .filter(item => item.distance < 32 * 32)
+      .filter(item => item.distance < 20 * 20)
       .sort((a, b) => a.distance - b.distance);
     // Near radius scales with the budget so detailed patches do not become sparse.
     const nearRadius = Math.min(13, Math.max(4.5, Math.sqrt(nearLimit / Math.PI) * spacing * 0.9));
     const near = nearby.filter(item => item.distance < nearRadius ** 2).slice(0, nearLimit);
-    const selected = new Set(near.map(item => item.patch));
-    const medium = nearby.filter(item => !selected.has(item.patch)).slice(0, mediumLimit);
     for (const part of parts) {
       const matrices = new Float32Array(near.length * 16);
       near.forEach((item, i) => part.world.multiply(item.patch.matrix).copyToArray(matrices, i * 16));
       part.mesh.thinInstanceSetBuffer("matrix", matrices, 16, true);
     }
-    const mediumMatrices = new Float32Array(medium.length * 16);
-    medium.forEach((item, i) => item.patch.cheap.copyToArray(mediumMatrices, i * 16));
-    mediumMesh.thinInstanceSetBuffer("matrix", mediumMatrices, 16, true);
   };
   update();
   let elapsed = 0;
@@ -154,11 +112,9 @@ export async function installGrassPatches(scene: Scene, forest: readonly ForestT
       adjustment = 0;
       if (averageFps < 43) {
         nearLimit = Math.max(16, Math.floor(nearLimit * 0.8));
-        mediumLimit = Math.max(350, Math.floor(mediumLimit * 0.85));
         dirty = true;
       } else if (averageFps > 57) {
         nearLimit = Math.min(maxNear, Math.ceil(nearLimit * 1.08));
-        mediumLimit = Math.min(maxMedium, Math.ceil(mediumLimit * 1.08));
         dirty = true;
       }
     }
@@ -168,5 +124,5 @@ export async function installGrassPatches(scene: Scene, forest: readonly ForestT
     }
   });
   scene.onDisposeObservable.add(() => scene.onBeforeRenderObservable.remove(observer));
-  console.info("[Rewild] Three-tier grass LOD:", patches.length, "world patches; near cap", maxNear, "medium cap", maxMedium);
+  console.info("[Rewild] Grass GLB only:", patches.length, "world patches; near cap", maxNear);
 }
