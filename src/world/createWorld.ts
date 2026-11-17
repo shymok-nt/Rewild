@@ -23,9 +23,10 @@ export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
   scene.fogDensity = 0.004;
   scene.fogColor = new Color3(0.76, 0.83, 0.88);
 
-  const camera = new ArcRotateCamera("third-person", -Math.PI / 2.5, Math.PI / 3.1, 12, new Vector3(0, 2, 0), scene);
+  const camera = new ArcRotateCamera("first-person", -Math.PI / 2, Math.PI / 2, 0.06, new Vector3(0, 2, 0), scene);
   camera.attachControl(canvas, true);
-  camera.wheelPrecision = 45;
+  camera.inputs.removeByType("ArcRotateCameraMouseWheelInput");
+  camera.minZ = 0.025;
 
   // DaySkyHDRI072B: clean equirectangular daytime sky panorama.
   // A lightweight JPG dome is used instead of importing Blender/USD/Godot files.
