@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { avoidsObstacle, crossesPlayer } from "./rules";
+import { avoidsObstacle, overlapsRunner } from "./rules";
 
 export type HazardKind = "coin" | "barrier" | "gate" | "vehicle";
 export interface Hazard {
@@ -140,7 +140,7 @@ export class HazardSystem {
     for (let i = this.active.length - 1; i >= 0; i--) this.release(i);
     this.nextSpawn = 25;
   }
-  update(dt: number, distance: number, speed: number, playerLane: number, jumpHeight: number, sliding: boolean):
+  update(dt: number, distance: number, speed: number, previousPlayerX: number, playerX: number, jumpHeight: number, sliding: boolean):
     { coins: number; crashed: boolean } {
     if (distance >= this.nextSpawn) {
       const lane = Math.floor(Math.random() * 3) - 1;
@@ -165,7 +165,8 @@ export class HazardSystem {
       item.root.position.z = item.z;
       if (item.kind === "coin") item.root.rotation.y += dt * 3.2;
       // Swept collision prevents tunnelling when a frame takes longer than expected.
-      if (crossesPlayer(oldZ,item.z) && item.lane === playerLane) {
+      const halfWidth = item.kind === "vehicle" ? 1.12 : item.kind === "gate" ? 1.05 : item.kind === "barrier" ? 1.02 : 0.72;
+      if (overlapsRunner(oldZ, item.z, previousPlayerX, playerX, item.lane * this.laneWidth, halfWidth)) {
         if (item.kind === "coin") {
           coins++;
           this.release(i);

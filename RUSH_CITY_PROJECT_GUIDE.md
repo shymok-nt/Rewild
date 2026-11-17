@@ -33,7 +33,7 @@ Repository: `shymok-nt/Rewild` (the repo was previously used for a different gam
 - TypeScript: ~5.9.3.
 - Package scripts: `npm run dev`, `npm run build`, `npm run typecheck`, `npm run test`, `npm run preview`.
 - GitHub Actions: `.github/workflows/build.yml` installs packages, runs tests, and builds on push to main.
-- No `package-lock.json` was present when checked; `npm install` creates one. CI must not rely on npm cache until the lockfile is committed.
+- `package-lock.json` is now committed for reproducible dependency resolution; CI still uses `npm install`.
 - Current GitHub connector tools can fetch/update/create/delete text files and create binary blobs, trees and commits. If using connector tools, check available tool schemas before calling them.
 - **Critical:** The assistant has previously committed code without verifying a complete local `npm run build` or browser playtest. The next developer should prioritize real validation, not just another set of untested features.
 
@@ -68,7 +68,7 @@ If the repository is already cloned, use `git pull origin main` instead of cloni
 - Original synthesized Web Audio sound effects with a persistent mute toggle.
 - Coin sparkle particles, chase camera, responsive HUD and automatic render resolution adjustment.
 - Page-visibility auto-pause.
-- **Known limitations:** obstacle spawn fairness is not exhaustively tested; collision uses discrete lane index rather than avatar x overlap; jump/slide animation fallback depends on imported GLB clips; no full onboarding or advanced accessibility pass.
+- **Known limitations:** obstacle spawn fairness and visual hitbox widths need browser playtesting; jump/slide animation fallback depends on imported GLB clips; no full onboarding or advanced accessibility pass.
 
 ## 4. Architecture — actual files and responsibilities
 
@@ -121,7 +121,7 @@ It crossfades actions where available. When a jump/slide clip is missing, it fal
 
 **Potential gameplay bugs to investigate:**
 1. Spawning is distance-based but newly spawned items start at a fixed Z; this can make early obstacles arrive later than the nominal spawn distance. Confirm difficulty and spacing in actual gameplay.
-2. Collision uses the *target* lane, not the actual interpolated avatar position; switching just before impact can avoid a collision even when visually overlapping. Consider consistent swept X/Z collision and fair input grace.
+2. Collision now uses interpolated visual X at the obstacle's Z-plane crossing, with widths based on obstacle type. Validate fast lane switches, hitbox tuning and input grace in the browser.
 3. Collision only uses an approximate Z interval. Validate under 30 FPS, 60 FPS, pauses, and high speed.
 4. Start, pause, restart and asynchronous character loading states should be tested together.
 5. Avoidance windows for slide/jump should match visible geometry and animation timing.
@@ -152,7 +152,7 @@ Performance-conscious measures already present:
 
 The project has a Node `node:test` suite covering lane clamp, speed, jump arc, avoidance rules and swept collision. GitHub Actions is configured to run `npm install`, `npm run test`, and `npm run build`.
 
-**Important verification caveat:** earlier assistant messages reported tests as passed, but the current conversation does **not** contain a reliable captured output of a full test or build run. Treat test/build status as **unverified** until actual output is collected. The CI status endpoint previously returned no statuses for a commit; that is not proof of a passing build.
+**Latest local verification (2026-11-18):** `npm run test` passed 6/6 tests; `npm run typecheck` exited successfully; `npm run build` completed with Vite 7.3.8. The build emitted a non-fatal JS chunk-size warning (~660 kB minified). This is CLI verification, **not** a browser playtest, CI run, or FPS measurement on the target AMD hardware.
 
 Recommended acceptance checks:
 - `npm run test` passes and shows test totals.
@@ -269,3 +269,13 @@ Her önemli geliştirme sonrasında bu bölümün altına tarih, değişen dosya
 - `src/main.ts` karakter GLB dosyası yüklenmeden oyunun başlatılmasını engelleyecek şekilde düzenlendi.
 - `src/style.css` yüklenme durumundaki butonu ayırt edecek şekilde güncellendi.
 - **Test durumu:** Tam proje derlemesi ve gerçek tarayıcı testi henüz doğrulanmadı.
+
+#### 2026-11-18 — İlk doğrulanmış derleme ve görsel konumla çarpışma
+
+- `src/rules.ts`: `overlapsRunner` ile engelin oyuncu düzleminden geçtiği anda karakterin interpolasyonlu yatay konumuna göre temas hesabı eklendi.
+- `src/hazards.ts` ve `src/main.ts`: engel temasları hedef şerit yerine karakterin önceki/güncel görsel X konumuyla hesaplanıyor; engele göre yatay temas genişliği kullanılıyor.
+- `tests/rules.test.mjs`: son anda şerit değiştirme, aynı şeritte temas ve Z dışında kalma testleri eklendi.
+- `package-lock.json`: bağımlılık çözümlemesi sabitlendi.
+- **Gerçek yerel doğrulama:** `npm run test` 6/6 başarılı; `npm run typecheck` başarılı; `npm run build` başarılı (Vite 7.3.8, büyük JS paketi uyarısı var).
+- **Henüz doğrulanmadı:** tarayıcı oynanışı, animasyonların görünümü, çarpışma hissi, mobil kontrol ve hedef AMD bilgisayarda FPS.
+- **Sonraki öncelik:** tarayıcı smoke test, hitbox ayarı, gerçek insan karakteri ve lisanslı/özgün çevre görselleri.

@@ -192,6 +192,7 @@ function frame(){
   updateStreet(distance);
   updateRoad(distance);
   mixer?.update(dt);
+  const previousLaneVisual=laneVisual;
   laneVisual=THREE.MathUtils.damp(laneVisual,lane*laneWidth,13,dt);
   if(jumpActive){jumpElapsed=Math.min(jumpDuration,jumpElapsed+dt);if(jumpElapsed>=jumpDuration){jumpActive=false;}}
   const jumpHeight=jumpActive?jumpArc(jumpElapsed,jumpDuration):0;
@@ -205,7 +206,7 @@ function frame(){
   camera.position.x=THREE.MathUtils.damp(camera.position.x,laneVisual*0.16,2.8,dt);
   camera.lookAt(camera.position.x*0.25,1.25,-16);
   for(const stripe of stripes){stripe.position.z+=dt*speed;if(stripe.position.z>12)stripe.position.z-=230;}
-  const collision = hazards.update(dt, distance, speed, lane, playerRoot.position.y, slide > 0);
+  const collision = hazards.update(dt, distance, speed, previousLaneVisual, laneVisual, playerRoot.position.y, slide > 0);
   coins += collision.coins;
   if(collision.coins>0){audio.coin();pickupEffects.burst(laneVisual,1.2,0);}
   pickupEffects.update(dt);

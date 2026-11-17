@@ -14,3 +14,13 @@ export function avoidsObstacle(kind: ObstacleType, height: number, sliding: bool
 export function crossesPlayer(oldZ: number, newZ: number, halfWidth = 0.45): boolean {
   return oldZ <= halfWidth && newZ >= -halfWidth;
 }
+/** Resolve lateral overlap at the moment the obstacle passes the player's plane. */
+export function overlapsRunner(
+  oldZ: number, newZ: number, previousX: number, currentX: number,
+  obstacleX: number, halfWidth: number,
+): boolean {
+  if (!crossesPlayer(oldZ, newZ)) return false;
+  const fraction = newZ === oldZ ? 1 : Math.max(0, Math.min(1, -oldZ / (newZ - oldZ)));
+  const crossingX = previousX + (currentX - previousX) * fraction;
+  return Math.abs(crossingX - obstacleX) <= halfWidth;
+}

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {clampLane,runnerSpeed,jumpArc,avoidsObstacle,crossesPlayer} from "../src/rules.ts";
+import {clampLane,runnerSpeed,jumpArc,avoidsObstacle,crossesPlayer,overlapsRunner} from "../src/rules.ts";
 
 test("lanes stay in three-lane range",()=>{
   assert.equal(clampLane(-3),-1);
@@ -28,4 +28,11 @@ test("swept collision handles large steps",()=>{
   assert.equal(crossesPlayer(-2,2),true);
   assert.equal(crossesPlayer(-4,-3),false);
   assert.equal(crossesPlayer(3,4),false);
+});
+test("collision uses visual runner position instead of target lane",()=>{
+  assert.equal(overlapsRunner(-1,1,0,0,2.9,1.12),false);
+  assert.equal(overlapsRunner(-1,1,0,2.9,2.9,1.12),false);
+  assert.equal(overlapsRunner(-1,1,1.6,2.9,2.9,1.12),true);
+  assert.equal(overlapsRunner(-1,1,0,0,0,0.72),true);
+  assert.equal(overlapsRunner(-4,-3,0,0,0,0.72),false);
 });
