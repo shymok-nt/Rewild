@@ -61,13 +61,13 @@ export function buildEnvironment(scene: Scene, forestTrees: ForestTree[] = []): 
   groundMaterial.roughness = 1;
   groundMaterial.specularIntensity = 0.12;
   const colorMap = new Texture("/models/forest-ground-color.jpg", scene, false, false,
-    Texture.TRILINEAR_SAMPLINGMODE, undefined,
+    Texture.TRILINEAR_SAMPLINGMODE, () => console.info("[Rewild] Forest Ground color loaded"),
     () => colorMap.updateURL("/models/grass-color.jpg"));
   const normalMap = new Texture("/models/forest-ground-normal.png", scene, false, false,
-    Texture.TRILINEAR_SAMPLINGMODE, undefined,
+    Texture.TRILINEAR_SAMPLINGMODE, () => console.info("[Rewild] Forest Ground normal loaded"),
     () => normalMap.updateURL("/models/grass-normal.jpg"));
   const roughnessMap = new Texture("/models/forest-ground-roughness.jpg", scene, false, false,
-    Texture.TRILINEAR_SAMPLINGMODE, undefined,
+    Texture.TRILINEAR_SAMPLINGMODE, () => console.info("[Rewild] Forest Ground roughness loaded"),
     () => roughnessMap.updateURL("/models/grass-orm.jpg"));
   for (const map of [colorMap, normalMap, roughnessMap]) {
     map.uScale = 9;
