@@ -11,6 +11,7 @@ function lerp(a: number, b: number, t: number): number { return a + (b - a) * t;
 
 export class RunnerScene extends Phaser.Scene {
   private art!: Phaser.GameObjects.Graphics;
+  private runnerSprite!: Phaser.GameObjects.Image;
   private stage!: Phaser.GameObjects.Container;
   private obstacles: { lane: number; z: number; kind: number; collected: boolean }[] = [];
   private nextSpawn = 28;
@@ -37,9 +38,16 @@ export class RunnerScene extends Phaser.Scene {
 
   constructor() { super("RunnerScene"); }
 
+  preload(): void {
+    this.load.svg("runner-a", "assets/runner-run-a.svg", { width: 120, height: 170 });
+    this.load.svg("runner-b", "assets/runner-run-b.svg", { width: 120, height: 170 });
+    this.load.svg("runner-jump", "assets/runner-jump.svg", { width: 120, height: 170 });
+  }
+
   create(): void {
     this.stage = this.add.container(0, 0);
     this.art = this.add.graphics();
+    this.runnerSprite = this.add.image(W / 2, 455, "runner-a").setDisplaySize(120, 170);
     this.title = this.add.text(26, 20, "RUSH CITY", {
       fontFamily: "Arial, sans-serif", fontSize: "31px", fontStyle: "bold",
       color: "#ffffff", stroke: "#25395e", strokeThickness: 6,
@@ -314,39 +322,19 @@ export class RunnerScene extends Phaser.Scene {
   }
 
   private drawPlayer(): void {
-    const g = this.art;
     const x = this.roadX(this.visualLane, 0.91);
-    const ground = 538;
     const jumping = this.jumpTime > 0;
-    const jumpPhase = jumping ? 1 - this.jumpTime / 0.78 : 0;
-    const lift = jumping ? Math.sin(jumpPhase * Math.PI) * 112 : 0;
     const sliding = this.slideTime > 0;
+    const phase = jumping ? 1 - this.jumpTime / 0.78 : 0;
+    const lift = jumping ? Math.sin(phase * Math.PI) * 112 : 0;
     const bounce = !jumping && !sliding ? Math.sin(this.runClock * 2) * 3 : 0;
-    const y = ground - lift + bounce;
-    const lean = this.laneLean * 13;
-    g.fillStyle(0x142338, 0.28 - lift / 800);
-    g.fillEllipse(x, ground + 7, 66 - lift * 0.1, 18 - lift * 0.03);
-    // Back-facing runner, legs, arms and head.
-    g.lineStyle(15, 0x26334d, 1);
-    const stride = sliding || jumping ? 0 : Math.sin(this.runClock) * 15;
-    g.lineBetween(x - 11, y - 33, x - 14 + stride, y);
-    g.lineBetween(x + 11, y - 33, x + 14 - stride, y);
-    g.lineStyle(11, 0xffc68d, 1);
-    g.lineBetween(x - 24, y - (sliding ? 40 : 86), x - 30 - stride * 0.4, y - 48);
-    g.lineBetween(x + 24, y - (sliding ? 40 : 86), x + 30 + stride * 0.4, y - 48);
-    g.fillStyle(0xff765b);
-    g.fillRoundedRect(x - 28 + lean, y - (sliding ? 67 : 110), 56, sliding ? 34 : 76, 15);
-    g.fillStyle(0x334c78);
-    g.fillRoundedRect(x - 19 + lean, y - (sliding ? 62 : 99), 38, sliding ? 24 : 44, 10);
-    g.fillStyle(0xffc68d);
-    g.fillCircle(x + lean, y - (sliding ? 79 : 127), 23);
-    g.fillStyle(0x253959);
-    g.fillRoundedRect(x - 24, y - (sliding ? 101 : 151), 48, 19, 8);
-    g.fillRect(x - 25 + lean, y - (sliding ? 92 : 143), 50, 7);
-    g.fillStyle(0xf3f6fa);
-    g.fillRoundedRect(x - 28 + stride, y - 6, 25, 10, 4);
-    g.fillRoundedRect(x + 3 - stride, y - 6, 25, 10, 4);
-    g.fillStyle(0x192f53);
-    g.fillRoundedRect(x - 29 + lean, y - (sliding ? 92 : 143), 58, 9, 4);
+    const ground = 538;
+    this.art.fillStyle(0x142338, Math.max(0.08, 0.28 - lift / 800));
+    this.art.fillEllipse(x, ground + 7, 66 - lift * 0.1, 18 - lift * 0.03);
+    const texture = jumping ? "runner-jump" : (Math.floor(this.runClock * 0.8) % 2 === 0 ? "runner-a" : "runner-b");
+    if (this.runnerSprite.texture.key !== texture) this.runnerSprite.setTexture(texture);
+    this.runnerSprite.setPosition(x + this.laneLean * 9, ground - lift - (sliding ? 47 : 85) + bounce);
+    this.runnerSprite.setScale(1, sliding ? 0.55 : 1);
+    this.runnerSprite.setAngle(this.laneLean * 8);
   }
 }
