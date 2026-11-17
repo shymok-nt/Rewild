@@ -40,7 +40,9 @@ export async function equipAxe(
   // The actual mesh bounds are X [-2.939,2.939], Z [-6.843,6.843].
   // Its narrow handle is on positive Z, offset toward positive X.
   // Put the grip at (1.55,0,4.8) in the original mesh coordinates.
-  // Move the shaft grip onto the pivot BEFORE applying the axis rotation.\n  // The handle centre is x≈1.7 and the palm grips near z≈4.5.\n  gripOffset.position.set(-1.7, 0, -4.5);
+  // Move the shaft grip onto the pivot BEFORE applying the axis rotation.
+  // The handle centre is x≈1.7 and the palm grips near z≈4.5.
+  gripOffset.position.set(-1.7, 0, -4.5);
 
   for (const mesh of imported.meshes) {
     if (!mesh.parent) mesh.parent = gripOffset;
@@ -56,11 +58,14 @@ export async function equipAxe(
       // The hand node itself is a mesh; attach at its geometric palm centre.
       const box = hand.getBoundingInfo().boundingBox;
       const palm = box.minimum.add(box.maximum).scale(0.5);
-      socket.position.copyFrom(palm);\n      // Hand_R geometry centre is close to the wrist; nudge toward the fingers.\n      socket.position.z += 0.025;
+      socket.position.copyFrom(palm);
+      // Hand_R geometry centre is close to the wrist; nudge toward the fingers.
+      socket.position.z += 0.025;
       console.info("[Rewild] Sketchfab axe attached by shaft grip to Hand_R");
     }
     // Positive forward pitch keeps the blade in front of the torso.
-    // Blade broad side lies on local X; turn its cutting direction forward.\n    socket.rotation.set(isHarvesting() ? 0.12 : 0.26, Math.PI / 2, 0.04);
+    // Blade broad side lies on local X; turn its cutting direction forward.
+    socket.rotation.set(isHarvesting() ? 0.12 : 0.26, Math.PI / 2, 0.04);
   });
 
   scene.onDisposeObservable.add(() => {
