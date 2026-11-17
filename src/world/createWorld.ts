@@ -5,8 +5,6 @@ import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
 import { DirectionalLight } from "@babylonjs/core/Lights/directionalLight";
 import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator";
 import { PhotoDome } from "@babylonjs/core/Helpers/photoDome";
-import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
-import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { Scene } from "@babylonjs/core/scene";
 import type { Engine } from "@babylonjs/core/Engines/engine";
 import { createPlayer } from "../player/createPlayer";
@@ -69,24 +67,6 @@ export function createWorld(engine: Engine, canvas: HTMLCanvasElement): Scene {
   createGrassPrototype(scene);
   const player = createPlayer(scene, camera, obstacles);
   const harvestNodes = createGatheringSystem(scene, player, obstacles);
-  // Opt-in diagnostic: /?shadowDebug=1 displays a simple, known-good
-  // shadow caster. If its shadow is absent, the issue is in the light/receiver;
-  // if present, GLB instance registration is the likely problem.
-  const shadowDebug = new URLSearchParams(window.location.search).has("shadowDebug");
-  if (shadowDebug) {
-    const testCaster = MeshBuilder.CreateBox("shadow-diagnostic-caster", { size: 2 }, scene);
-    testCaster.position.set(3, 2, 9);
-    const testMaterial = new StandardMaterial("shadow-diagnostic-red", scene);
-    testMaterial.diffuseColor = new Color3(0.95, 0.16, 0.13);
-    testCaster.material = testMaterial;
-    shadows.addShadowCaster(testCaster, false);
-    console.info("[Rewild shadow diagnostic]", {
-      groundReceivesShadows: ground?.receiveShadows,
-      shadowMapSize: 1024,
-      testCaster: testCaster.name,
-    });
-  }
-
   // Keep the shadow map inexpensive: only the nearby player and cabin,
   // not the full instanced forest, rocks or every blade of grass.
   const staticCasters = scene.meshes.filter(mesh =>
