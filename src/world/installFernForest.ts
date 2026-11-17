@@ -37,7 +37,7 @@ export async function installFernForest(scene: Scene, trees: readonly ForestTree
       return { mesh, scale, rotation, position };
     });
     const anchors: TransformNode[] = [];
-    const MAX_PLANTS = 420;
+    const MAX_PLANTS = 180;
     let count = 0;
     const place = (x: number, z: number, size: number, angle: number, variant: number) => {
       if (count >= MAX_PLANTS || protectedArea(x, z)) return;
@@ -54,6 +54,7 @@ export async function installFernForest(scene: Scene, trees: readonly ForestTree
         instance.rotationQuaternion = part.rotation.clone();
         instance.scaling.copyFrom(part.scale);
         instance.isPickable = false;
+        instance.receiveShadows = false;
       }
       // Use variant to slightly alter silhouette without duplicating geometry.
       anchor.rotation.y += variant * 0.34;
