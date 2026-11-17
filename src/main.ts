@@ -73,15 +73,21 @@ loader.load(characterUrl,gltf=>{
 });
 const clock=new THREE.Clock();
 let distance=0,coins=0,lane=0,laneVisual=0,jump=0,slide=0,paused=false,dead=false;
+let best = Number(localStorage.getItem("rush-city-best") || 0);
+let jumpElapsed = 0;
+let jumpActive = false;
+const jumpDuration = 0.82;
 const laneWidth=2.9;
 const hazards = new HazardSystem(scene);
 function action(key:string){
+ if(dead&&key!=="r"&&key!==" ")return;
+ if(paused&&key!=="p"&&key!=="Escape")return;
  if(key==="ArrowLeft"||key==="a")lane=Math.max(-1,lane-1);
  if(key==="ArrowRight"||key==="d")lane=Math.min(1,lane+1);
- if((key==="ArrowUp"||key===" "||key==="w")&&jump<=0&&slide<=0)jump=0.82;
- if((key==="ArrowDown"||key==="s")&&slide<=0&&jump<=0)slide=0.72;
- if(key==="p"||key==="Escape")paused=!paused;
- if(dead&&(key==="r"||key===" ")){dead=false;distance=0;coins=0;hazards.reset();statusEl.hidden=true;}
+ if((key==="ArrowUp"||key===" "||key==="w")&&!jumpActive&&slide<=0){jumpActive=true;jumpElapsed=0;jump=jumpDuration;}
+ if((key==="ArrowDown"||key==="s")&&slide<=0&&!jumpActive)slide=0.72;
+ if(key==="p"||key==="Escape"){paused=!paused;if(!dead){statusEl.hidden=!paused;statusEl.textContent="DURAKLATILDI · P İLE DEVAM";}}
+ if(dead&&(key==="r"||key===" ")){dead=false;paused=false;distance=0;coins=0;lane=0;laneVisual=0;jump=0;slide=0;jumpActive=false;jumpElapsed=0;hazards.reset();statusEl.hidden=true;}
 }
 window.addEventListener("keydown",e=>{if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"," "].includes(e.key))e.preventDefault();if(!e.repeat)action(e.key);});
 let touchStart:{x:number,y:number}|null=null;
@@ -98,10 +104,10 @@ function frame(){
   updateCity(distance);
   mixer?.update(dt);
   laneVisual=THREE.MathUtils.damp(laneVisual,lane*laneWidth,13,dt);
-  const jumping=jump>0;
-  if(jump>0)jump=Math.max(0,jump-dt);
+  if(jumpActive){jumpElapsed=Math.min(jumpDuration,jumpElapsed+dt);jump=jumpDuration-jumpElapsed;if(jumpElapsed>=jumpDuration){jumpActive=false;jump=0;}}
+  const jumpHeight=jumpActive?Math.sin(jumpElapsed/jumpDuration*Math.PI)*1.8:0;
   if(slide>0)slide=Math.max(0,slide-dt);
-  playerRoot.position.set(laneVisual,jumping?Math.sin((1-jump/0.82)*Math.PI)*1.8:0,0);
+  playerRoot.position.set(laneVisual,jumpHeight,0);
   playerRoot.scale.y=slide>0?0.55:1;
   camera.position.x=THREE.MathUtils.damp(camera.position.x,laneVisual*0.16,2.8,dt);
   camera.lookAt(camera.position.x*0.25,1.25,-16);
@@ -110,10 +116,12 @@ function frame(){
   coins += collision.coins;
   if (collision.crashed) {
     dead = true;
+    best=Math.max(best,Math.floor(distance));
+    localStorage.setItem("rush-city-best",String(best));
     statusEl.hidden = false;
-    statusEl.textContent = "KOŞU BİTTİ · R İLE TEKRAR";
+    statusEl.textContent = "KOŞU BİTTİ · "+Math.floor(distance)+" m · REKOR "+best+" m · R İLE TEKRAR";
   }
-  scoreEl.textContent=Math.floor(distance)+" m";
+  scoreEl.textContent=Math.floor(distance)+" m · REKOR "+best+" m";
   coinsEl.textContent="● "+coins;
  }
  renderer.render(scene,camera);
